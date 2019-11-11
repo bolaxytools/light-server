@@ -1,0 +1,11 @@
+[Global]
+Port=8080
+ServerOrigin="123.206.116.244"
+
+[MySQL]
+user="root"
+pasw="87651234"
+prot="tcp"
+host="122.51.106.29"
+port="3306"
+dbnm="wallet"
