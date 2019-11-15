@@ -5,7 +5,7 @@ import (
 	"github.com/alecthomas/log4go"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	"wallet-service/config"
+	"wallet-svc/config"
 )
 
 var db *sqlx.DB

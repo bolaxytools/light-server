@@ -1,8 +1,8 @@
 package domain
 
 import (
-	"wallet-service/model"
-	"wallet-service/persist/mysql"
+	"wallet-svc/model"
+	"wallet-svc/persist/mysql"
 )
 
 func GetHistory(addr string,page,size int32) ([]*model.Tx,error)  {

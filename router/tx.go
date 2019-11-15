@@ -2,10 +2,10 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"wallet-service/domain"
-	"wallet-service/dto/req"
-	"wallet-service/dto/resp"
-	"wallet-service/werror"
+	"wallet-svc/domain"
+	"wallet-svc/dto/req"
+	"wallet-svc/dto/resp"
+	"wallet-svc/werror"
 
 	"net/http"
 )

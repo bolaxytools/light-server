@@ -33,4 +33,6 @@ type MySQL struct {
 type Global struct {
 	Port         int32
 	ServerOrigin string
+	LevelDbFilePath string `toml:"level_db_file_path"`
+	BolaxyNodeUrl string `toml:"bolaxy_node_url"`
 }

@@ -4,14 +4,15 @@ import (
 	"github.com/alecthomas/log4go"
 	"os"
 	"path/filepath"
-	"wallet-service/config"
-	"wallet-service/persist/mysql"
-	controller "wallet-service/router"
+	"wallet-svc/config"
+	"wallet-svc/domain"
+	"wallet-svc/persist/mysql"
+	controller "wallet-svc/router"
 )
 
 func Getwd() string {
 	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	//dir = "/Users/rudy/gospace/wallet-service"
+	//dir = "/Users/rudy/gospace/wallet-svc"
 	if err != nil {
 		panic("No caller information")
 	}
@@ -24,5 +25,10 @@ func main() {
 	log4go.Info("钱包服务初始化开始......")
 	config.LoadConfig(Getwd())
 	mysql.InitMySQL()
+
+	follower := domain.NewBlockFollower()
+
+	go follower.FollowBlockChain()
+
 	controller.InitRouter()
 }

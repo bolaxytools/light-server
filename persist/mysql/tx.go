@@ -2,8 +2,9 @@ package mysql
 
 import (
 	"github.com/alecthomas/log4go"
+	"github.com/boxproject/bolaxy/cmd/sdk"
 	"github.com/jmoiron/sqlx"
-	"wallet-service/model"
+	"wallet-svc/model"
 )
 
 type TxDao struct {
@@ -32,6 +33,61 @@ func (dao *TxDao) Add(gd *model.Tx) error {
 		return er
 	}
 	log4go.Info("INSERT INTO `asset` result=%d\n", lid)
+
+	return nil
+}
+
+func (dao *TxDao) BashSave(gds []*sdk.Transaction,height int64,txTime int64) error {
+	if gds == nil || len(gds) < 1 {
+		return nil
+	}
+	sql := "INSERT INTO `tx`(`tx_hash`, `addr_from`, `addr_to`, `block_height`, `tx_time`, `memo`,`amount`,`miner_fee`) " +
+		"VALUES " +
+		"(?, ?, ?, ?, ?, ?,?,?)"
+
+	tx,err := db.Beginx()
+
+	if err != nil {
+		return err
+	}
+
+
+	 //vss := make([][]interface{},len(gds))
+
+	stt,er := tx.Preparex(db.Rebind(sql))
+
+
+	if er != nil {
+		return er
+	}
+
+	defer stt.Close()
+
+	for _,rtx := range gds  {
+		tmp := make([]interface{},8)
+		tmp[0]=rtx.Hash
+		tmp[1]=rtx.From
+		tmp[2]=rtx.To
+		tmp[3]=height
+		tmp[4]=txTime
+		tmp[5]=string(rtx.Data)
+		tmp[6]=rtx.Value
+		tmp[7]=rtx.Gas
+		_, er := stt.Exec(tmp...)
+		if er != nil {
+			return er
+		}
+
+	}
+
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+
+	}
+
+	//log4go.Info("INSERT INTO `asset` result=%d\n", lid)
 
 	return nil
 }

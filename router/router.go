@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"github.com/alecthomas/log4go"
 	"github.com/gin-gonic/gin"
-	"wallet-service/config"
+	"wallet-svc/config"
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 
 func InitRouter() {
 	engine = gin.Default()
-	initGoodsRouter()
+	initAssetRouter()
 	initTxRouter()
 	servAddr := fmt.Sprintf(":%d", config.Cfg.Global.Port)
 	log4go.Info("InitRouter: [%v]", servAddr)

@@ -1,6 +1,8 @@
 [Global]
 Port=8080
 ServerOrigin="123.206.116.244"
+level_db_file_path="./wlt.core"
+bolaxy_node_url="http://192.168.10.189:8080"
 
 [MySQL]
 user="root"

@@ -1,6 +1,6 @@
 package resp
 
-import "wallet-service/werror"
+import "wallet-svc/werror"
 
 /*
 	每个响应的结构体前辍为Resp，方便写代码时的识别

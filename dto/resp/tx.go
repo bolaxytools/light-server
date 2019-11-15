@@ -1,6 +1,6 @@
 package resp
 
-import "wallet-service/model"
+import "wallet-svc/model"
 
 type TxHistory struct {
 	Txs []*model.Tx `json:"txs"`
