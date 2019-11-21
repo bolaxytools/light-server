@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -138,6 +139,20 @@ func onlyKey() []byte {
 	return k
 }
 
+func buildWhiteKey(addr string) []byte {
+	k := []byte{0x03}
+	buf := bytes.NewBuffer(k)
+	buf.WriteString(addr)
+	return buf.Bytes()
+}
+
+func buildBlackKey(addr string) []byte {
+	k := []byte{0x02}
+	buf := bytes.NewBuffer(k)
+	buf.WriteString(addr)
+	return buf.Bytes()
+}
+
 func (flr *BlockFollower) getDealtBlockHeight() (int64, error) {
 	vf, er := flr.db.Get(onlyKey(), nil)
 	if er != nil {
@@ -228,4 +243,93 @@ func (flr *BlockFollower) GetNonce(addr string) (uint64, error) {
 	}
 
 	return tmp.Nonce, nil
+}
+
+func (flr *BlockFollower) SendRawTx(reqstr string) (string, error) {
+
+
+	buf, err := flr.requester.PostString("rawtx", reqstr)
+	if err != nil {
+		return "", err
+	}
+
+	tmp := struct {
+		TxHash string `json:"txHash"`
+	}{}
+
+	er := json.Unmarshal(buf,&tmp)
+
+	if er != nil {
+		return "",er
+	}
+
+	return tmp.TxHash, nil
+}
+
+/*
+	将某地址添加到黑名单列表
+*/
+func (flr *BlockFollower) AddToBlackList(addr string) error {
+
+	key := buildBlackKey(addr)
+	v := []byte{0x01}
+	er :=flr.db.Put(key,v,nil)
+	return er
+}
+
+
+/*
+	将某地址添加到白名单列表
+*/
+func (flr *BlockFollower) AddToWhiteList(addr string) error {
+
+	key := buildWhiteKey(addr)
+	v := []byte{0x01}
+	er := flr.db.Put(key,v,nil)
+	return er
+}
+
+/*
+	删除黑名单列表
+*/
+func (flr *BlockFollower) RemBlackList(addr string) error {
+
+	key := buildBlackKey(addr)
+	er := flr.db.Delete(key,nil)
+
+	return er
+}
+
+
+/*
+	删除白名单列表
+*/
+func (flr *BlockFollower) RemWhiteList(addr string) error {
+
+	key := buildWhiteKey(addr)
+	er := flr.db.Delete(key,nil)
+	return er
+}
+
+
+/*
+	是否存在于黑名单列表
+*/
+func (flr *BlockFollower) CheckBlackList(addr string) bool {
+
+	key := buildBlackKey(addr)
+	_,er := flr.db.Get(key,nil)
+
+	return er==nil
+}
+
+
+/*
+	是否存在于白名单列表
+*/
+func (flr *BlockFollower) CheckWhiteList(addr string) bool {
+
+	key := buildWhiteKey(addr)
+	_,er := flr.db.Get(key,nil)
+	return er==nil
 }

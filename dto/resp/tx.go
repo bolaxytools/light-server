@@ -9,3 +9,7 @@ type TxHistory struct {
 func NewTxHistory(txs []*model.Tx) *TxHistory {
 	return &TxHistory{Txs:txs}
 }
+
+type SendTxResp struct {
+	TxHash string `json:"tx_hash"`
+}

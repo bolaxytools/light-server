@@ -35,8 +35,21 @@ func sendTx(c *gin.Context) {
 	}
 
 	//TODO send tx to block chain
+	flr := domain.NewBlockFollower()
 
-	c.JSON(http.StatusOK, resp.NewSuccess())
+	txhash,err := flr.SendRawTx(inner.SignedTx)
+	if err != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
+		return
+	}
+
+	rsp := &resp.SendTxResp{
+		TxHash:txhash,
+	}
+
+
+
+	c.JSON(http.StatusOK, resp.NewSuccessResp(rsp))
 }
 
 

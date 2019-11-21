@@ -24,6 +24,7 @@ func InitRouter() {
 	engine = gin.Default()
 	initAssetRouter()
 	initTxRouter()
+	initLeagueRouter()
 	servAddr := fmt.Sprintf(":%d", config.Cfg.Global.Port)
 	log4go.Info("InitRouter: [%v]", servAddr)
 

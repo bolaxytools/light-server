@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 type Requester struct {
@@ -38,6 +39,10 @@ func (requester *Requester) RequestHttp(method string, endpoint string, params m
 	for key, val := range params {
 		q.Add(key, val)
 	}
+
+
+
+
 	req.URL.RawQuery = q.Encode()
 
 	resp, err := client.Do(req)
@@ -45,6 +50,24 @@ func (requester *Requester) RequestHttp(method string, endpoint string, params m
 		return nil, err
 	}
 
+
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, errors.New("request error")
+	}
+
+	return buf, nil
+}
+func (requester *Requester) PostString(endpoint string, reqstr string) ([]byte, error) {
+	resp, err := http.Post(fmt.Sprintf("%s/rawtx/%s", requester.BaseUrl,), "text/plain", strings.NewReader(reqstr))
+	if err != nil {
+		return nil,err
+	}
 
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
