@@ -64,11 +64,11 @@ func (dao *TokenDao) QueryTokenByAddr(addr string, page, pageSize int32) ([]*mod
 	return assets, nil
 }
 
-func (dao *TokenDao) QueryTokenByAddrAndContract(addr,contract string) (*model.Asset, error) {
+func (dao *TokenDao) QueryTokenByAddrAndContract(addr, contract string) (*model.Asset, error) {
 	sql := "SELECT " +
 		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals from follow f,token t where f.contract=t.contract and f.contract=? and f.wallet = ? limit 0,1"
 	assets := new(model.Asset)
-	er := dao.db.Get(assets, sql,contract,addr)
+	er := dao.db.Get(assets, sql, contract, addr)
 	if er != nil {
 		return nil, er
 	}
@@ -92,7 +92,7 @@ func (dao *TokenDao) QueryAllTokens(page, pageSize int32) ([]*resp.AssetInfo, er
 	return assets, nil
 }
 
-func (dao *TokenDao) QueryTokenByAddrForExplore(page, pageSize int32,addr string) ([]*resp.AssetInfo, error) {
+func (dao *TokenDao) QueryTokenByAddrForExplore(page, pageSize int32, addr string) ([]*resp.AssetInfo, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -102,7 +102,7 @@ func (dao *TokenDao) QueryTokenByAddrForExplore(page, pageSize int32,addr string
 	sql := "SELECT " +
 		" t.symbol as 'symbol',t.`desc` as 'name',f.balance as 'quantity',t.contract,t.logo as 'logo' from follow f,token t where f.contract=t.contract and f.wallet = ? limit ?,?"
 	var assets []*resp.AssetInfo
-	er := dao.db.Select(&assets, sql,addr, (page-1)*pageSize, pageSize)
+	er := dao.db.Select(&assets, sql, addr, (page-1)*pageSize, pageSize)
 	if er != nil {
 		return nil, er
 	}
@@ -139,7 +139,7 @@ func (dao *FollowDao) QueryTokenByContract(page, pageSize int32, content, addr s
 	var addrs []string
 
 	if len(ctrcts) > 0 {
-		sql2 := "SELECT f.contract from  follow f  WHERE f.wallet = ? and f.contract in (?)"
+		sql2 := "SELECT f.contract from  follow f  WHERE f.wallet = ? and f.followed=true and f.contract in (?)"
 
 		query, args, err := sqlx.In(sql2, addr, ctrcts)
 		if err != nil {

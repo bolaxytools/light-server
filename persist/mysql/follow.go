@@ -18,9 +18,9 @@ func NewFollowDao() *FollowDao {
 }
 
 func (dao *FollowDao) Add(gd *model.Follow) error {
-	sql := "INSERT INTO `follow`(`contract`, `wallet`, `balance`) " +
+	sql := "INSERT INTO `follow`(`contract`, `wallet`, `balance`,`followed`) " +
 		"VALUES " +
-		"(:contract, :wallet, :balance) ON DUPLICATE KEY UPDATE `balance`=:balance"
+		"(:contract, :wallet, :balance,:followed) ON DUPLICATE KEY UPDATE `balance`=:balance"
 	re, err := dao.db.NamedExec(sql, gd)
 
 	if err != nil {
@@ -51,38 +51,37 @@ func (dao *FollowDao) QueryCount() (int64, error) {
 	return count, nil
 }
 
-func (dao *FollowDao) QueryBrcs(page,pageSize int32,addr string) ([]*model.Asset,error) {
+func (dao *FollowDao) QueryBrcs(page, pageSize int32, addr string) ([]*model.Asset, error) {
 
-	if page <1  {
+	if page < 1 {
 		page = 1
 	}
-	if pageSize<5 {
-		pageSize=5
+	if pageSize < 5 {
+		pageSize = 5
 	}
 
 	sql := "select " +
-		"* FROM follow f LEFT JOIN token t on t.contract = f.contract where f.wallet=?"
+		"* FROM follow f LEFT JOIN token t on t.contract = f.contract where f.wallet=? and f.followed=true"
 
-	rows,err := dao.db.Queryx(sql,addr,addr,(page-1)*pageSize,pageSize)
+	rows, err := dao.db.Queryx(sql, addr, addr, (page-1)*pageSize, pageSize)
 
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	var txs []*model.Asset
-
 
 	for rows.Next() {
 		tx := new(model.Asset)
 		er := rows.StructScan(tx)
 		if er != nil {
-			return nil,er
+			return nil, er
 		}
 		txs = append(txs, tx)
 	}
 
-	log4go.Debug("query sql=%s,rows=%d\n", sql,len(txs))
+	log4go.Debug("query sql=%s,rows=%d\n", sql, len(txs))
 
-	return txs,nil
+	return txs, nil
 
 }

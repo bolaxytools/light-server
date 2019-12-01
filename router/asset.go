@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"github.com/alecthomas/log4go"
 	"github.com/gin-gonic/gin"
 	"wallet-svc/domain"
@@ -170,6 +171,10 @@ func searchToken(c *gin.Context) {
 		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
 		return
 	}
+
+	jbf,_ := json.Marshal(reqdata)
+	log4go.Info("search data=%s\n",jbf)
+
 	inner := new(req.ReqSearch)
 	err = reqdata.Reverse(inner)
 	if err != nil {

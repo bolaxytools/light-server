@@ -11,6 +11,7 @@ type Tx struct {
 	TxTime      int64  `db:"tx_time" json:"tx_time"`           //交易时间(因交易上没有时间，取块生成的时间，即block.time)
 	Memo        string `db:"memo" json:"memo"`                 //备注
 	Contract    string `db:"contract" json:"contract"`         //合约地址（如果有）
+	Status      int8   `db:"status" json:"status"`             //交易状态
 }
 
 type Block struct {
@@ -28,10 +29,14 @@ type Address struct {
 }
 
 type TxReceipt struct {
-	logs []ReceiptLog `json:"logs"`
+	GasUsed         uint64       `json:"gas_used"`
+	Logs            []ReceiptLog `json:"logs"`
+	Status          int8         `json:"status"`
+	ContractAddress string       `json:"contract_address"`
 }
 
 type ReceiptLog struct {
-	Topics []string `json:"topics"` //为3个的才关心 第2个和第3个分别是from和to
-	Data   string   `json:"data"`
+	Address string   `json:"address"`
+	Topics  []string `json:"topics"` //为3个的才关心 第2个和第3个分别是from和to
+	Data    string   `json:"data"`
 }

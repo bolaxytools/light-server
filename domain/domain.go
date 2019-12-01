@@ -22,7 +22,9 @@ import (
 	"wallet-svc/util"
 )
 
-var bfr *BlockFollower
+var (
+	bfr *BlockFollower
+)
 
 type BlockFollower struct {
 	requester  *httpclient.Requester
@@ -33,6 +35,7 @@ type BlockFollower struct {
 	tokenDao   *mysql.TokenDao
 	followDao  *mysql.FollowDao
 	chan_txs   chan []*sdk.Transaction
+	chan_fa    chan *model.FollowAsset
 }
 
 func (bf *BlockFollower) GetAddressCount() uint64 {
@@ -73,6 +76,33 @@ func (bf *BlockFollower) procTxs() {
 						log4go.Info("bf.addressDao.Add to error=%v\n", er)
 					}
 				}
+			}
+
+		}
+	}
+}
+
+func (bf *BlockFollower) procFollowAssetBalance() {
+
+	for {
+		select {
+		case fa := <-bf.chan_fa:
+
+			balance, er := bf.getChildBalance(fa)
+			if er != nil {
+				log4go.Info(" bf.getChildBalance error=%v\n", er)
+				continue
+			}
+
+			flw := &model.Follow{
+				Contract: fa.Contract,
+				Wallet:   fa.Address,
+				Balance:  balance,
+			}
+
+			err := bf.followDao.Add(flw)
+			if err != nil {
+				log4go.Info("bf.followDao.Add error=%v\n", err)
 			}
 
 		}
@@ -128,8 +158,10 @@ func NewBlockFollower() *BlockFollower {
 		followDao:  mysql.NewFollowDao(),
 	}
 	bfr.chan_txs = make(chan []*sdk.Transaction, 1024)
+	bfr.chan_fa = make(chan *model.FollowAsset, 1024)
 
 	go bfr.procTxs()
+	go bfr.procFollowAssetBalance()
 	return bfr
 }
 
@@ -181,16 +213,24 @@ func (flr *BlockFollower) pa(lh, ch int64) bool {
 		if lh == 4 || lh == 5 {
 			log4go.Info("a")
 		}
-		err = flr.txDao.BatchSave(txs, next, nowmills)
+
+		/******begin******/
+		mdxs, er := flr.translate(txs, uint64(next), nowmills)
+		if er != nil {
+			log4go.Info("flr.translate error=%v\n", er)
+		}
+
+		err = flr.txDao.BatchAddTx(mdxs)
 		if err != nil {
-			log4go.Info("flr.txDao.BashSave error=%v,blockHeight=%d,txs.len=%d\n", err, lh, len(txs))
+			log4go.Info("flr.txDao.BatchAddTx error=%v,blockHeight=%d,txs.len=%d\n", err, lh, len(txs))
 			er := flr.setDealtBlockHeight(next)
 			if er != nil {
 				log4go.Info("flr.setDealtBlockHeight to %d\n", next)
 			}
 		}
+		/******end******/
 
-		er := flr.blockDao.Add(blk)
+		er = flr.blockDao.Add(blk)
 		if er != nil {
 			log4go.Info("flr.blockDao.Add error=%v\n", er)
 		} else {
@@ -214,47 +254,101 @@ func (flr *BlockFollower) pa(lh, ch int64) bool {
 	return true
 }
 
-func (flr *BlockFollower) Translate(txs []*sdk.Transaction) error {
+func (flr *BlockFollower) translate(txs []*sdk.Transaction, height uint64, txTime int64) ([]*model.Tx, error) {
+	var rt []*model.Tx
 	for _, tx := range txs {
 		bigint, _ := big.NewInt(0).SetString(tx.Value, 0)
-		if bigint.Int64() == 0 && flr.checkExists(tx.To) { //TODO 判断to的地址是不是在登记的池里，如果在就是智能合约转账
-			return flr.remakeTx(tx)
+		if bigint.Int64() == 0 {
+			tkx, e := flr.remakeTx(tx, height, txTime)
+			if e != nil {
+				log4go.Info("flr.remakeTx error=%v\n", e)
+				continue
+			}
+			rt = append(rt, tkx)
 		}
 	}
-	return nil
+	return rt, nil
 }
 
 func (flr *BlockFollower) checkExists(fooAddr string) bool {
 	return false
 }
 
-func (flr *BlockFollower) remakeTx(tx *sdk.Transaction) error {
+func (flr *BlockFollower) remakeTx(tx *sdk.Transaction, height uint64, txTime int64) (*model.Tx, error) {
 	endpoint := fmt.Sprintf("tx/%s", tx.Hash)
 
 	buf, err := flr.requester.RequestHttpByGet(endpoint, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	tmp := new(model.ReceiptLog)
+	tmp := new(model.TxReceipt)
 
 	er := json.Unmarshal(buf, tmp)
 	if er != nil {
-		return er
+		return nil, er
 	}
 
-	if len(tmp.Topics) != 3 {
-		return errors.New("not brc20 transfer")
+	_, c, sbf := sdk.UnWrapData(tx.Data)
+
+	datastr := ""
+	if c == sdk.DataDisplay {
+		datastr = string(sbf)
 	}
 
-	tx.To = util.CutAddress(tmp.Topics[2])
-	tx.Value = util.DataToValue(tmp.Data)
+	if len(datastr) > 100 {
+		datastr = datastr[0:100]
+	}
+	mtx := &model.Tx{
+		TxType:      0,
+		AddrFrom:    tx.From,
+		AddrTo:      tx.To,
+		Amount:      tx.Value,
+		MinerFee:    fmt.Sprintf("%d", tx.Gas),
+		TxHash:      tx.Hash,
+		BlockHeight: height,
+		TxTime:      txTime,
+		Memo:        datastr,
+		Status:      tmp.Status,
+	}
 
-	return nil
+	if tmp.ContractAddress != "0x0000000000000000000000000000000000000000" {
+		mtx.TxType = 1
+	}
+
+	mtx.MinerFee = fmt.Sprintf("%d", tmp.GasUsed)
+
+	if len(tmp.Logs) > 0 && len(tmp.Logs[0].Topics) == 3 { //如果是智能合约的转账就把目的地址和交易额提出来
+		mtx.Contract = tmp.Logs[0].Address
+		mtx.AddrTo = util.CutAddress(tmp.Logs[0].Topics[2])
+		mtx.Amount = util.DataToValue(tmp.Logs[0].Data)
+
+		fa_fr := &model.FollowAsset{
+			Contract: mtx.Contract,
+			Address:  mtx.AddrFrom,
+		}
+
+		flr.chan_fa <- fa_fr
+
+		fa_to := &model.FollowAsset{
+			Contract: mtx.Contract,
+			Address:  mtx.AddrTo,
+		}
+		flr.chan_fa <- fa_to
+
+	} else {
+		mtx.MinerFee = fmt.Sprintf("%d", tmp.GasUsed)
+	}
+	return mtx, nil
 }
 
 func onlyKey() []byte {
 	k := []byte{0x01}
+	return k
+}
+
+func gasKey() []byte {
+	k := []byte{0x04}
 	return k
 }
 
@@ -403,6 +497,26 @@ func (flr *BlockFollower) SendRawTx(reqstr string) (string, error) {
 	return tmp.TxHash, nil
 }
 
+func (flr *BlockFollower) getChildBalance(fa *model.FollowAsset) (string, error) {
+
+	buf, err := flr.requester.PostJson("balanceof", fa)
+	if err != nil {
+		return "", err
+	}
+
+	tmp := struct {
+		Data string `json:"data"`
+	}{}
+
+	er := json.Unmarshal(buf, &tmp)
+
+	if er != nil {
+		return "", er
+	}
+
+	return tmp.Data, nil
+}
+
 /*
 	将某地址添加到黑名单列表
 */
@@ -472,7 +586,16 @@ func (bf *BlockFollower) FollowToken(contract, addr, balance string) error {
 		Contract: contract,
 		Wallet:   addr,
 		Balance:  balance,
+		Followed: true,
 	}
+
+	fa := &model.FollowAsset{
+		Contract: contract,
+		Address:  addr,
+	}
+
+	bf.chan_fa <- fa
+
 	return bf.followDao.Add(flw)
 }
 
@@ -502,4 +625,30 @@ func (bf *BlockFollower) QueryTokenCount() (int64, error) {
 
 func (bf *BlockFollower) QuerySearchTokenCount(content string) (uint64, error) {
 	return bf.tokenDao.QueryCountByContent(content)
+}
+
+func (flr *BlockFollower) SetTotalGasCost(gas uint64) error {
+	k1 := gasKey()
+	v1 := make([]byte, 16)
+
+	binary.LittleEndian.PutUint64(v1, gas)
+
+	er := flr.db.Put(k1, v1, nil)
+	if er != nil {
+		return er
+	}
+	return nil
+}
+
+func (flr *BlockFollower) GeTotalGasCost() (int64, error) {
+	vf, er := flr.db.Get(gasKey(), nil)
+	if er != nil {
+		if er == errors.ErrNotFound {
+			return -1, nil
+		}
+		return 0, er
+	}
+
+	p := binary.LittleEndian.Uint64(vf)
+	return int64(p), nil
 }
