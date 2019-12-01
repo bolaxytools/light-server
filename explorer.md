@@ -236,22 +236,18 @@
     "err_code": 10001,
     "err_msg": "成功",
     "data": {
-        "asset_list": [
-            {
-                "name": "酒财币",
-                "contract": "0xaaafffbbbccceeed0002223",
-                "type": "积分币",
-                "symbol": "JCB",
-                "quantity": 23323244
-            },
-            {
-                "name": "二哈币",
-                "contract": "0xaaafffbbbccceeed0002224",
-                "type": "BRCn",
-                "symbol": "RHB",
-                "quantity": 23323245
-            }
-        ]
+        "ret_type": "hx",
+        "data": {
+            "tx_type": 0,
+            "addr_from": "0x3bD6361959306B1b50797D3ff82B9A43541c3e47",
+            "addr_to": "0xf6865694766c7681431E4F0C6D61AF5Ea7E37B6D",
+            "amount": "100",
+            "miner_fee": "21000",
+            "tx_hash": "0x7bc2fd5fd7c36eef11a3b5e0c5ac6674aafda78467115b073defc2ed41647bae",
+            "block_height": 4,
+            "tx_time": 1573711652370,
+            "memo": ""
+        }
     }
 }
 ```
