@@ -31,7 +31,7 @@ func (dao *FollowDao) Add(gd *model.Follow) error {
 	if er != nil {
 		return er
 	}
-	log4go.Info("INSERT INTO `follow` result=%d\n", lid)
+	log4go.Debug("INSERT INTO `follow` result=%d\n", lid)
 
 	return nil
 }

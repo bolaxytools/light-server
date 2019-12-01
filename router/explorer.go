@@ -2,6 +2,7 @@ package controller
 
 import (
 	"database/sql"
+	"github.com/alecthomas/log4go"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"wallet-svc/domain"
@@ -132,7 +133,6 @@ func getHistoryBlock(c *gin.Context) {
 		return
 	}
 
-
 	total, _ := domain.GetBlockTotal()
 
 	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewBlockHistory(blk, uint64(total))))
@@ -154,25 +154,18 @@ func getAssetInfo(c *gin.Context) {
 		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
 		return
 	}
+	flr := domain.NewBlockFollower()
 
-	assets := make([]*resp.AssetInfo, 2)
-	assets[0] = &resp.AssetInfo{
-		Name:     "酒财币",
-		Contract: "0xaaafffbbbccceeed0002223",
-		Type:     "积分币",
-		Symbol:   "JCB",
-		Quantity: 23323244,
+	assets, er := flr.QueryAllTokens(inner.Page, inner.PageSize)
+
+	if er != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(er.Error()))
+		return
 	}
 
-	assets[1] = &resp.AssetInfo{
-		Name:     "二哈币",
-		Contract: "0xaaafffbbbccceeed0002224",
-		Type:     "BRCn",
-		Symbol:   "RHB",
-		Quantity: 23323245,
-	}
+	tl, er := flr.QueryTokenCount()
 
-	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewAssetList(assets,2)))
+	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewAssetList(assets, uint64(tl))))
 }
 
 func search(c *gin.Context) {
@@ -192,23 +185,30 @@ func search(c *gin.Context) {
 	lenth := len(inner.Content)
 
 	if lenth == addr_len { //搜地址
-		assets := make([]*resp.AssetInfo, 2)
-		assets[0] = &resp.AssetInfo{
-			Name:     "酒财币",
-			Contract: "0xaaafffbbbccceeed0002223",
-			Type:     "积分币",
-			Symbol:   "JCB",
-			Quantity: 23323244,
+		flr := domain.NewBlockFollower()
+
+		n, r := flr.GetAccount(inner.Addr)
+		if r != nil {
+			c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
+			return
 		}
 
-		assets[1] = &resp.AssetInfo{
-			Name:     "二哈币",
-			Contract: "0xaaafffbbbccceeed0002224",
-			Type:     "BRCn",
-			Symbol:   "RHB",
-			Quantity: 23323245,
+		asts, er := flr.QueryAddrAssets(1, 100, inner.Addr)
+		if er != nil {
+			log4go.Info("flr.QueryAddrAssets error=%v\n", asts)
 		}
-		ret := resp.NewSearchRet(resp.Ret_Addr, resp.NewAssetList(assets,2))
+
+		var assets []*resp.AssetInfo
+		assets = append(assets, &resp.AssetInfo{Name: "BUSD", Type: "BUSD", Symbol: "BUSD", Quantity: float64(n.Balance.Int64()), Logo: "https://cdn.mytoken.org/Frdw6OBZGQhL5WaU2zvJEBgrh3FK"})
+
+		ats, er := flr.QueryAccountTokens(1, 100, inner.Content)
+		if er != nil {
+			log4go.Info("flr.QueryAccountTokens error=%v\n", er)
+		} else {
+			assets = append(assets, ats...)
+		}
+
+		ret := resp.NewSearchRet(resp.Ret_Addr, resp.NewAssetList(assets, 2))
 		c.JSON(http.StatusOK, resp.NewSuccessResp(ret))
 		return
 	} else if lenth == hash_len { //搜交易hash

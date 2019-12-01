@@ -63,7 +63,7 @@ func TestGoodsDao_BashSave(t *testing.T) {
 
 	txs := []*sdk.Transaction{asset1,asset2}
 
-	er := dao.BashSave(txs,7,time.Now().Unix())
+	er := dao.BatchSave(txs,7,time.Now().Unix())
 	if er != nil {
 		t.Error(er)
 		return

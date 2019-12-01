@@ -41,10 +41,10 @@ func GetBlockById(txHash string) (*model.Block,error)  {
 	return txs,err
 }
 
-func GetBlockByHeight(txHash uint64) (*model.Block,error)  {
+func GetBlockByHeight(height uint64) (*model.Block,error)  {
 	dao := mysql.NewBlockDao()
-	txs,err := dao.GetBlockByHeightX(txHash)
-	return txs,err
+	blk,err := dao.GetBlockByHeightX(height)
+	return blk,err
 }
 
 func GetTxTotal() (uint64,error)  {

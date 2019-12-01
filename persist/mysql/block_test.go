@@ -9,7 +9,7 @@ func TestBlockDao_Get(t *testing.T) {
 	dao := NewBlockDao()
 
 
-	tx,e := dao.GetBlockByHeight("0")
+	tx,e := dao.GetBlockByHeightX(47)
 	if e != nil {
 		t.Error(e)
 		return

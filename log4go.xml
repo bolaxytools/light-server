@@ -30,7 +30,7 @@
     <filter enabled="false">
         <tag>xmllog</tag>
         <type>xml</type>
-        <level>TRACE</level>
+        <level>INFO</level>
         <property name="filename">trace.xml</property>
         <property name="rotate">true</property> <!-- true enables log rotation, otherwise append -->
         <property name="maxsize">100M</property> <!-- \d+[KMG]? Suffixes are in terms of 2**10 -->

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/alecthomas/log4go"
 	"github.com/jmoiron/sqlx"
+	"wallet-svc/dto/resp"
 	"wallet-svc/model"
 )
 
@@ -32,7 +33,7 @@ func (dao *TokenDao) Add(gd *model.Token) error {
 	if er != nil {
 		return er
 	}
-	log4go.Info("INSERT INTO `token` result=%d\n", lid)
+	log4go.Debug("INSERT INTO `token` result=%d\n", lid)
 
 	return nil
 }
@@ -52,8 +53,49 @@ func (dao *TokenDao) QueryCount() (int64, error) {
 	return count, nil
 }
 
-func (dao *TokenDao) queryTokenByAddr(addr string) {
+func (dao *TokenDao) QueryTokenByAddr(addr string, page, pageSize int32) ([]*model.Asset, error) {
+	sql := "SELECT " +
+		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals from follow f,token t where f.contract=t.contract and f.wallet = ? limit ?,?"
+	var assets []*model.Asset
+	er := dao.db.Select(&assets, sql, addr, (page-1)*pageSize, pageSize)
+	if er != nil {
+		return nil, er
+	}
+	return assets, nil
+}
 
+func (dao *TokenDao) QueryAllTokens(page, pageSize int32) ([]*resp.AssetInfo, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 5 {
+		pageSize = 5
+	}
+	sql := "SELECT " +
+		"t.symbol as 'symbol',t.desc as 'name',t.quantity as 'quantity',t.contract as 'contract',t.logo as 'logo' from token t limit ?,?"
+	var assets []*resp.AssetInfo
+	er := dao.db.Select(&assets, sql, (page-1)*pageSize, pageSize)
+	if er != nil {
+		return nil, er
+	}
+	return assets, nil
+}
+
+func (dao *TokenDao) QueryTokenByAddrForExplore(page, pageSize int32,addr string) ([]*resp.AssetInfo, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 5 {
+		pageSize = 5
+	}
+	sql := "SELECT " +
+		" t.symbol as 'symbol',t.`desc` as 'name',f.balance as 'quantity',t.contract,t.logo as 'logo' from follow f,token t where f.contract=t.contract and f.wallet = ? limit ?,?"
+	var assets []*resp.AssetInfo
+	er := dao.db.Select(&assets, sql,addr, (page-1)*pageSize, pageSize)
+	if er != nil {
+		return nil, er
+	}
+	return assets, nil
 }
 
 func (dao *FollowDao) QueryTokenByContract(page, pageSize int32, content, addr string) ([]*model.Token, error) {
@@ -68,26 +110,19 @@ func (dao *FollowDao) QueryTokenByContract(page, pageSize int32, content, addr s
 
 	like := fmt.Sprintf("%s%s%s", "%", content, "%")
 
-	rows, err := dao.db.Queryx(sql, content, like, (page-1)*pageSize, pageSize)
-
-	if err != nil {
-		return nil, err
-	}
-
 	var txs []*model.Token
+
+	er := dao.db.Select(&txs, sql, content, like, (page-1)*pageSize, pageSize)
+	if er != nil {
+		return nil, er
+	}
 
 	var ctrcts []string
 
-	for rows.Next() {
-		tkn := new(model.Token)
-		er := rows.StructScan(tkn)
-		if er != nil {
-			return nil, er
-		}
+	for _, t := range txs {
 
-		ctrcts = append(ctrcts, tkn.Contract)
+		ctrcts = append(ctrcts, t.Contract)
 
-		txs = append(txs, tkn)
 	}
 
 	var addrs []string

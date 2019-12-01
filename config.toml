@@ -1,6 +1,6 @@
 [Global]
 port=8080
-server_origin="123.206.116.244"
+server_origin="127.0.0.1"
 level_db_file_path="./wlt.core"
 bolaxy_node_url="http://192.168.10.189:8080"
 def_host="192.168.9.189"
@@ -11,8 +11,8 @@ def_desc="圈子的一些描述"
 
 [MySQL]
 user="root"
-pasw="87651234"
+pasw="12348765"
 prot="tcp"
-host="122.51.106.29"
+host="127.0.0.1"
 port="3306"
 dbnm="wallet"

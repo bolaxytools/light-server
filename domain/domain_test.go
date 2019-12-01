@@ -6,6 +6,7 @@ import (
 	"testing"
 	"wallet-svc/config"
 	"wallet-svc/mock"
+	"wallet-svc/persist/mysql"
 )
 
 var (
@@ -14,8 +15,13 @@ var (
 
 func TestMain(m *testing.M) {
 	config.LoadConfig(mock.Getwd())
+	mysql.InitMySQL()
 	flr = NewBlockFollower()
 	m.Run()
+}
+
+func TestPa(t *testing.T)  {
+	flr.pa(0,3)
 }
 
 func TestBlockFollower_GetCurrentBlockHeight(t *testing.T) {
@@ -60,5 +66,5 @@ func TestLvdb(t *testing.T) {
 }
 
 func TestEq(t *testing.T)  {
-	fmt.Println(0x1==0x01)
+	fmt.Println(len("0X03573555DCF1B4518816DF6F1EDFF2C16B4D29F64CF6D9BDA78ECB6F50826CCA0B"))
 }

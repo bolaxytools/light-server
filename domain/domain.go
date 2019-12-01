@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"time"
 	"wallet-svc/config"
+	"wallet-svc/dto/resp"
 	"wallet-svc/httpclient"
 	"wallet-svc/model"
 	"wallet-svc/persist/mysql"
@@ -57,7 +58,9 @@ func (bf *BlockFollower) procTxs() {
 						UpdateTime: now,
 					}
 					er := bf.addressDao.Add(fa)
-					log4go.Info("bf.addressDao.Add from error=%v\n", er)
+					if er != nil {
+						log4go.Info("bf.addressDao.Add from error=%v\n", er)
+					}
 				}
 				if len(to) > 0 {
 					ta := &model.Address{
@@ -66,7 +69,9 @@ func (bf *BlockFollower) procTxs() {
 						UpdateTime: now,
 					}
 					er := bf.addressDao.Add(ta)
-					log4go.Info("bf.addressDao.Add to error=%v\n", er)
+					if er != nil {
+						log4go.Info("bf.addressDao.Add to error=%v\n", er)
+					}
 				}
 			}
 
@@ -145,53 +150,69 @@ func (flr *BlockFollower) FollowBlockChain() {
 			continue
 		}
 
-		log4go.Info("已处理到高度：%d，最新区块高度:%d\n", lastDealHei, curHei)
-		if lastDealHei < curHei {
+		flr.pa(lastDealHei, curHei)
 
-			next := lastDealHei + 1
+		time.Sleep(time.Second * 2)
 
-			blk, txs, err := flr.GetBlockTxs(next)
-			if err != nil {
-				log4go.Info("flr.GetBlockTxs error=%v\n", err)
-				er := flr.setDealtBlockHeight(next)
-				if er != nil {
-					log4go.Info("flr.setDealtBlockHeight to %d\n", next)
-				}
-				time.Sleep(time.Second * 30)
-				continue
-			}
+	}
+}
 
-			flr.chan_txs <- txs //把爬到的交易扔到channel里去处理
+func (flr *BlockFollower) pa(lh, ch int64) bool {
+	log4go.Info("已处理到高度：%d，最新区块高度:%d\n", lh, ch)
+	if lh < ch {
 
-			nowmills := time.Now().UnixNano() / 1e6
+		next := lh + 1
 
-			err = flr.txDao.BashSave(txs, next, nowmills)
-			if err != nil {
-				log4go.Info("flr.txDao.BashSave error=%v\n", err)
-				er := flr.setDealtBlockHeight(next)
-				if er != nil {
-					log4go.Info("flr.setDealtBlockHeight to %d\n", next)
-				}
-				time.Sleep(time.Second * 10)
-				continue
-			}
-
-			er := flr.blockDao.Add(blk)
-			if er != nil {
-				log4go.Info("flr.blockDao.Add error=%v\n", er)
-			}
-
-			log4go.Info("process block=%d success\n", next)
-			er = flr.setDealtBlockHeight(next)
+		blk, signerMap, txs, err := flr.GetBlockTxs(next)
+		if err != nil {
+			log4go.Info("flr.GetBlockTxs error=%v\n", err)
+			er := flr.setDealtBlockHeight(next)
 			if er != nil {
 				log4go.Info("flr.setDealtBlockHeight to %d\n", next)
 			}
-
+			time.Sleep(time.Second * 30)
+			return false
 		}
 
-		time.Sleep(time.Second * 10)
+		flr.chan_txs <- txs //把爬到的交易扔到channel里去处理
 
+		nowmills := time.Now().UnixNano() / 1e6
+
+		if lh == 4 || lh == 5 {
+			log4go.Info("a")
+		}
+		err = flr.txDao.BatchSave(txs, next, nowmills)
+		if err != nil {
+			log4go.Info("flr.txDao.BashSave error=%v,blockHeight=%d,txs.len=%d\n", err, lh, len(txs))
+			er := flr.setDealtBlockHeight(next)
+			if er != nil {
+				log4go.Info("flr.setDealtBlockHeight to %d\n", next)
+			}
+		}
+
+
+		er := flr.blockDao.Add(blk)
+		if er != nil {
+			log4go.Info("flr.blockDao.Add error=%v\n", er)
+		} else {
+			er := flr.blockDao.BatchAddSingers(signerMap, blk.Height)
+			if er != nil {
+				log4go.Info("flr.blockDao.BatchAddSingers error:%v\n", er)
+			} else {
+				log4go.Debug("insert %d signers success.\n", len(signerMap))
+			}
+		}
+
+		log4go.Info("process block=%d success\n", next)
+		er = flr.setDealtBlockHeight(next)
+		if er != nil {
+			log4go.Info("flr.setDealtBlockHeight to %d\n", next)
+		}
+
+	} else {
+		time.Sleep(time.Second * 10)
 	}
+	return true
 }
 
 func (flr *BlockFollower) Translate(txs []*sdk.Transaction) error {
@@ -300,13 +321,13 @@ func (flr *BlockFollower) GetCurrentBlockHeight() (int64, error) {
 	return hei, nil
 }
 
-func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, []*sdk.Transaction, error) {
+func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, map[string]string, []*sdk.Transaction, error) {
 
 	endpoint := fmt.Sprintf("block/%d", hei)
 
 	buf, err := flr.requester.RequestHttpByGet(endpoint, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	type bk struct {
@@ -322,14 +343,15 @@ func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, []*sdk.Transacti
 
 	er := json.Unmarshal(buf, tmp)
 	if er != nil {
-		return nil, nil, er
+		return nil, nil, nil, er
 	}
 
 	jb := string(buf)
+	fmt.Printf("to=%s\n", jb)
 
-	txs, err := sdk.GetTransactions(jb)
+	txs, signerMap, err := sdk.GetTransactions(jb)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	blk := &model.Block{
@@ -339,7 +361,7 @@ func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, []*sdk.Transacti
 		BlockTime: time.Now().UnixNano() / 1e6,
 	}
 
-	return blk, txs, nil
+	return blk, signerMap, txs, nil
 }
 
 func (flr *BlockFollower) GetAccount(addr string) (*model.Account, error) {
@@ -455,8 +477,27 @@ func (bf *BlockFollower) FollowToken(contract, addr, balance string) error {
 	return bf.followDao.Add(flw)
 }
 
-func (bf *BlockFollower) SearchToken(content,addr string) ([]*model.Token, error) {
-	return bf.followDao.QueryTokenByContract(1, 100, content,addr)
+func (bf *BlockFollower) SearchToken(content, addr string) ([]*model.Token, error) {
+	return bf.followDao.QueryTokenByContract(1, 100, content, addr)
+}
+
+func (bf *BlockFollower) QueryAddrAssets(page, pageSize int32, addr string) ([]*model.Asset, error) {
+	return bf.tokenDao.QueryTokenByAddr(addr, page, pageSize)
+}
+
+func (bf *BlockFollower) QueryAllTokens(page, pageSize int32) ([]*resp.AssetInfo, error) {
+	return bf.tokenDao.QueryAllTokens(page, pageSize)
+}
+
+
+func (bf *BlockFollower) QueryAccountTokens(page, pageSize int32,addr string) ([]*resp.AssetInfo, error) {
+	return bf.tokenDao.QueryTokenByAddrForExplore(page, pageSize,addr)
+}
+
+
+
+func (bf *BlockFollower) QueryTokenCount() (int64, error) {
+	return bf.tokenDao.QueryCount()
 }
 
 func (bf *BlockFollower) QuerySearchTokenCount(content string) (uint64, error) {

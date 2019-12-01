@@ -1,11 +1,14 @@
 package mysql
 
 import (
+	"bytes"
+	"encoding/hex"
 	"github.com/alecthomas/log4go"
 	"github.com/boxproject/bolaxy/cmd/sdk"
 	"github.com/boxproject/bolaxy/common"
 	"github.com/boxproject/bolaxy/rlp"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/sha3"
 	"wallet-svc/model"
 )
@@ -35,71 +38,65 @@ func (dao *TxDao) Add(gd *model.Tx) error {
 	if er != nil {
 		return er
 	}
-	log4go.Info("INSERT INTO `asset` result=%d\n", lid)
+	log4go.Debug("INSERT INTO `asset` result=%d\n", lid)
 
 	return nil
 }
 
-func (dao *TxDao) BashSave(gds []*sdk.Transaction, height int64, txTime int64) error {
+func (dao *TxDao) BatchSave(gds []*sdk.Transaction, height int64, txTime int64) error {
 	if gds == nil || len(gds) < 1 {
-		return nil
+		return errors.New("empty txs")
 	}
 	sql := "INSERT INTO `tx`(`tx_hash`, `addr_from`, `addr_to`, `block_height`, `tx_time`, `memo`,`amount`,`miner_fee`) " +
 		"VALUES " +
 		"(?, ?, ?, ?, ?, ?,?,?)"
 
-	tx, err := db.Beginx()
+	sql = "INSERT INTO `tx`(`tx_hash`, `addr_from`, `addr_to`, `block_height`, `tx_time`, `memo`,`amount`,`miner_fee`) " +
+		"VALUES "
+	buf := bytes.NewBufferString(sql)
 
-	if err != nil {
-		return err
-	}
+	arrLen := len(gds)
+	if arrLen > 0 { //表明redis中已经有数据
 
-
-	stt, er := tx.Preparex(db.Rebind(sql))
-
-	if er != nil {
-		return er
-	}
-
-	defer stt.Close()
-
-	for _, rtx := range gds {
-		tmp := make([]interface{}, 8)
-		tmp[0] = rtx.Hash
-		tmp[1] = rtx.From
-		tmp[2] = rtx.To
-		tmp[3] = height
-		tmp[4] = txTime
-
-		hs := rlpHash(rtx).String()
-		log4go.Info("blockHeight=%d,hash=%s\n", height,hs)
-
-		if len(hs) > 100 {
-			tmp[5] = hs[0:100]
-		} else {
-			tmp[5] = hs
+		for i := 0; i < arrLen; i++ {
+			if i == (arrLen - 1) {
+				buf.WriteString("(?, ?, ?, ?, ?, ?,?,?)")
+			} else {
+				buf.WriteString("(?, ?, ?, ?, ?, ?,?,?),")
+			}
 		}
 
-		tmp[6] = rtx.Value
-		tmp[7] = rtx.Gas
-		_, er := stt.Exec(tmp...)
-		if er != nil {
-			return er
+		finalSql := buf.String()
+
+		stmt, err := dao.db.Prepare(finalSql)
+
+		if err != nil {
+			return err
 		}
 
+		defer stmt.Close()
+
+		args := make([]interface{}, 0)
+
+
+
+		for _, redistick := range gds {
+			datastr := hex.EncodeToString(redistick.Data)
+			if len(datastr)>100 {
+				datastr = datastr[0:100]
+			}
+			args = append(args, redistick.Hash, redistick.From, redistick.To, height, txTime, datastr, redistick.Value, redistick.Value)
+		}
+		_, errex := stmt.Exec(args...)
+
+		if errex != nil {
+			return errex
+		}
+		log4go.Info("block height=%d insert %d txs.\n",height,arrLen)
 	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
-
-	}
-
-	//log4go.Info("INSERT INTO `asset` result=%d\n", lid)
 
 	return nil
 }
-
 
 func rlpHash(x interface{}) (h common.Hash) {
 	hw := sha3.NewLegacyKeccak256()
@@ -197,3 +194,8 @@ func (dao *TxDao) QueryCount() (int64, error) {
 
 	return count, nil
 }
+
+/*
+["+IUDgIJSCJScfQsvYzx4lvB7ZPH1/nHnSBab9IInEICAgKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAloNnnwdkb0/N9utWHiqefailLWf0GKPda5ysnCXil1/QsoHYVbAB36VLeTdFka1Qb69Sj26+bIsLOwVhHDlWio7JJ"],"InternalTransactions":[],"InternalTransactionReceipts":[]},"Signatures":{"0X03573555DCF1B4518816DF6F1EDFF2C16B4D29F64CF6D9BDA78ECB6F50826CCA0B":"0x2799d38bd4879df08e9cc2b0f87aac79506f11ccd3d94c78615d2453085e4c3a318a43dfd31593aef136072642d6a794a7fb8c744c1415a839ce5ac30d043a8401"}}
+["+IUEgIJSCJScfQsvYzx4lvB7ZPH1/nHnSBab9IInEICAgKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAloFDeqURUbeJM/yYrM6ma8eFYcDISGwMZIJW0lrfB+tPFoEzJV6dwxj9RnLCdx7H31HV1rmy7rztX+4XRbaBnZB3c"],"InternalTransactions":[],"InternalTransactionReceipts":[]},"Signatures":{"0X03573555DCF1B4518816DF6F1EDFF2C16B4D29F64CF6D9BDA78ECB6F50826CCA0B":"0x6c18d4ddb4b086ba469a212a51281bd71436fe50729037215941d796a4419d6d13fb99ef3ce92ac11231775d07ad9d46c696beb62593db329c9165af481dbccd01"}}
+*/

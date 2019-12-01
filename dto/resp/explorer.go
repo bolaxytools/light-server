@@ -2,10 +2,9 @@ package resp
 
 import "wallet-svc/model"
 
-
-const(
-	Ret_Addr = "dz"
-	Ret_Hash = "hx"
+const (
+	Ret_Addr   = "dz"
+	Ret_Hash   = "hx"
 	Ret_Height = "kg"
 )
 
@@ -27,10 +26,10 @@ type SearchRet struct {
 	Data    interface{} `json:"data"`     //具体数据
 }
 
-func NewSearchRet(tp string,data interface{}) *SearchRet {
+func NewSearchRet(tp string, data interface{}) *SearchRet {
 	return &SearchRet{
-		RetType:tp,
-		Data:data,
+		RetType: tp,
+		Data:    data,
 	}
 }
 
@@ -38,14 +37,14 @@ func NewSearchRet(tp string,data interface{}) *SearchRet {
 	地址资产信息
 */
 type AssetsInfo struct {
-	Total uint64 `json:"total"`
+	Total     uint64       `json:"total"`
 	AssetList []*AssetInfo `json:"asset_list"` //资产列表
 }
 
-func NewAssetList(assets []*AssetInfo,total uint64) *AssetsInfo {
+func NewAssetList(assets []*AssetInfo, total uint64) *AssetsInfo {
 	return &AssetsInfo{
-		AssetList:assets,
-		Total:total,
+		AssetList: assets,
+		Total:     total,
 	}
 }
 
@@ -55,5 +54,5 @@ type AssetInfo struct {
 	Type     string  `json:"type"`     //类型
 	Symbol   string  `json:"symbol"`   //币种简称
 	Quantity float64 `json:"quantity"` //量
-
+	Logo     string  `json:"logo"`     //图标
 }

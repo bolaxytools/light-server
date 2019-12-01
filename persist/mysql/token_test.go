@@ -36,3 +36,25 @@ func TestNewSliceScan(t *testing.T) {
 
 }
 
+func TestNewTokenAll(t *testing.T) {
+	dao := NewTokenDao()
+	as,e := dao.QueryTokenByAddrForExplore(1,10,"0x9c7D0b2F633C7896f07B64f1F5fe71E748169Bf4")
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	fmt.Printf("success=%v\n",as)
+
+}
+
+func TestQueryTokenByAddr(t *testing.T) {
+	dao := NewTokenDao()
+	as,e := dao.QueryTokenByAddr("0x92519EE1A6987fc6E3382E3527B64be80Da2fF2A",1,10)
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	fmt.Printf("success=%v\n",as)
+
+}
+

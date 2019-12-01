@@ -31,7 +31,7 @@ func (dao *AddressDao) Add(gd *model.Address) error {
 	if er != nil {
 		return er
 	}
-	log4go.Info("INSERT INTO `asset` result=%d\n", lid)
+	log4go.Debug("INSERT INTO `asset` result=%d\n", lid)
 
 	return nil
 }

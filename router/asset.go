@@ -44,9 +44,14 @@ func getbalance(c *gin.Context) {
 		return
 	}
 
+	asts, er := flr.QueryAddrAssets(1, 100, inner.Addr)
+	if er != nil {
+		log4go.Info("flr.QueryAddrAssets error=%v\n", asts)
+	}
+
 	coinbox := &resp.AssetBox{
-		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: n.Balance.String()},
-		ExtCoinList: []*model.Asset{&model.Asset{Symbol: "Brc1", Balance: "100000"}, &model.Asset{Symbol: "Brc5", Balance: "900000"}},
+		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: n.Balance.String(),Logo:"https://cdn.mytoken.org/Frdw6OBZGQhL5WaU2zvJEBgrh3FK",Desc:"BUSD",Decimals:18},
+		ExtCoinList: asts,
 	}
 
 	c.JSON(http.StatusOK, resp.NewSuccessResp(coinbox))
@@ -69,8 +74,6 @@ func getNonce(c *gin.Context) {
 		return
 	}
 
-
-
 	flr := domain.NewBlockFollower()
 
 	n, r := flr.GetAccount(inner.Addr)
@@ -79,7 +82,7 @@ func getNonce(c *gin.Context) {
 		return
 	}
 
-	log4go.Info("from:%s,nonce=%d\n",inner.Addr,n.Nonce)
+	log4go.Info("from:%s,nonce=%d\n", inner.Addr, n.Nonce)
 
 	coinbox := &resp.NonceObj{
 		Nonce: n.Nonce,
@@ -135,7 +138,7 @@ func searchToken(c *gin.Context) {
 
 	flr := domain.NewBlockFollower()
 
-	tkns, r := flr.SearchToken(inner.Content,inner.Addr)
+	tkns, r := flr.SearchToken(inner.Content, inner.Addr)
 	if r != nil {
 		c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
 		return
