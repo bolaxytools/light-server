@@ -12,6 +12,7 @@ type Tx struct {
 	Memo        string `db:"memo" json:"memo"`                 //备注
 	Contract    string `db:"contract" json:"contract"`         //合约地址（如果有）
 	Status      int8   `db:"status" json:"status"`             //交易状态
+	Symbol      string `db:"symbol" json:"symbol"`             //币种简称
 }
 
 type Block struct {
@@ -29,7 +30,7 @@ type Address struct {
 }
 
 type TxReceipt struct {
-	GasUsed         uint64       `json:"gas_used"`
+	GasUsed         uint64       `json:"gasUsed"`
 	Logs            []ReceiptLog `json:"logs"`
 	Status          int8         `json:"status"`
 	ContractAddress string       `json:"contract_address"`

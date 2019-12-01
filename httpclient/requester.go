@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type Requester struct {
@@ -25,7 +26,10 @@ func (requester *Requester) RequestHttpByPost(endpoint string, params map[string
 }
 
 func (requester *Requester) RequestHttp(method string, endpoint string, params map[string]string) ([]byte, error) {
-	transport := &http.Transport{}
+	transport := &http.Transport{
+		DisableKeepAlives:true,
+		IdleConnTimeout:time.Second,
+	}
 	client := &http.Client{
 		Transport: transport,
 	}
@@ -36,6 +40,7 @@ func (requester *Requester) RequestHttp(method string, endpoint string, params m
 		return nil, errors.New(fmt.Sprintf("build request error=%s", err.Error()))
 	}
 	req.WithContext(context.Background())
+
 
 	q := req.URL.Query()
 	for key, val := range params {
@@ -48,6 +53,7 @@ func (requester *Requester) RequestHttp(method string, endpoint string, params m
 	if err != nil {
 		return nil, err
 	}
+
 
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

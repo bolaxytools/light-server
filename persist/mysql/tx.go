@@ -107,7 +107,7 @@ func (dao *TxDao) Query(addr string, page, pageSize int32) ([]*model.Tx, error) 
 		pageSize = 5
 	}
 	sql := "select " +
-		"* from tx where addr_to = ? or addr_from = ? order by tx_time desc limit ?,?"
+		"t.*,tk.symbol from tx t left JOIN token tk on t.contract=tk.contract where addr_to = ? or addr_from = ? order by tx_time desc limit ?,?"
 	rows, err := dao.db.Queryx(sql, addr, addr, (page-1)*pageSize, pageSize)
 
 	if err != nil {
@@ -130,6 +130,48 @@ func (dao *TxDao) Query(addr string, page, pageSize int32) ([]*model.Tx, error) 
 	return txs, nil
 }
 
+func (dao *TxDao) QueryForChildToken(child,addr string, page, pageSize int32) (int64,[]*model.Tx, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 5 {
+		pageSize = 5
+	}
+	sql := "select " +
+		"t.*,tk.symbol from tx t left JOIN token tk on t.contract=tk.contract where t.contract=? and (t.addr_to = ? or t.addr_from = ?) order by tx_time desc limit ?,?"
+
+	coutSql := "select " +
+		"count(1) from tx where contract=? and (addr_to = ? or addr_from = ?)"
+
+	var count int64
+	err := dao.db.Get(&count, coutSql,child,addr,addr)
+
+	if err != nil || count==0 {
+		return 0,nil, err
+	}
+
+	rows, err := dao.db.Queryx(sql, child,addr, addr, (page-1)*pageSize, pageSize)
+
+	if err != nil {
+		return 0,nil, err
+	}
+
+	var txs []*model.Tx
+
+	for rows.Next() {
+		tx := new(model.Tx)
+		er := rows.StructScan(tx)
+		if er != nil {
+			return 0,nil, er
+		}
+		txs = append(txs, tx)
+	}
+
+	log4go.Debug("query sql=%s,rows=%d\n", sql, len(txs))
+
+	return count,txs, nil
+}
+
 func (dao *TxDao) QueryLatestTx(page, pageSize int32) ([]*model.Tx, error) {
 	if page < 1 {
 		page = 1
@@ -138,7 +180,7 @@ func (dao *TxDao) QueryLatestTx(page, pageSize int32) ([]*model.Tx, error) {
 		pageSize = 5
 	}
 	sql := "select " +
-		"* from tx order by tx_time desc limit ?,?"
+		"t.*,tk.symbol from tx t left JOIN token tk on t.contract=tk.contract order by tx_time desc limit ?,?"
 	rows, err := dao.db.Queryx(sql, (page-1)*pageSize, pageSize)
 
 	if err != nil {

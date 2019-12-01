@@ -58,14 +58,25 @@ func index(c *gin.Context) {
 		return
 	}
 
+	togas, e := flr.GeTotalGasCost()
+	if e != nil {
+		log4go.Info("flr.GeTotalGasCost error=%v\n", e)
+		togas = 999999999
+	}
+
+	busd, e := flr.GetTotalBUSD()
+	if e != nil {
+		log4go.Info("flr.GetTotalBUSD error=%v\n", e)
+	}
+
 	ret := &resp.IndexRet{
 		ChainId:       "chainId10011",
 		BlockCount:    uint64(hei),
 		AddressCount:  flr.GetAddressCount(),
-		MainCoinCount: 72774,
+		MainCoinCount: busd,
 		TxCount:       txtotal,
 		CrossMax:      100000,
-		GasCostCount:  29929229,
+		GasCostCount:  float64(togas),
 	}
 
 	txs, err := domain.GetLatestTx(1, 5)
@@ -199,7 +210,7 @@ func search(c *gin.Context) {
 		}
 
 		var assets []*resp.AssetInfo
-		assets = append(assets, &resp.AssetInfo{Name: "BUSD", Type: "BUSD", Symbol: "BUSD", Quantity: float64(n.Balance.Int64()), Logo: "https://cdn.mytoken.org/Frdw6OBZGQhL5WaU2zvJEBgrh3FK"})
+		assets = append(assets, &resp.AssetInfo{Name: "BUSD", Type: "BUSD", Symbol: "BUSD", Quantity: n.Balance.String(), Logo: "https://cdn.mytoken.org/Frdw6OBZGQhL5WaU2zvJEBgrh3FK"})
 
 		ats, er := flr.QueryAccountTokens(1, 100, inner.Content)
 		if er != nil {

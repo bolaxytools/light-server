@@ -237,8 +237,6 @@ func (flr *BlockFollower) pa(lh, ch int64) bool {
 			er := flr.blockDao.BatchAddSingers(signerMap, blk.Height)
 			if er != nil {
 				log4go.Info("flr.blockDao.BatchAddSingers error:%v\n", er)
-			} else {
-				log4go.Debug("insert %d signers success.\n", len(signerMap))
 			}
 		}
 
@@ -257,21 +255,21 @@ func (flr *BlockFollower) pa(lh, ch int64) bool {
 func (flr *BlockFollower) translate(txs []*sdk.Transaction, height uint64, txTime int64) ([]*model.Tx, error) {
 	var rt []*model.Tx
 	for _, tx := range txs {
-		bigint, _ := big.NewInt(0).SetString(tx.Value, 0)
-		if bigint.Int64() == 0 {
-			tkx, e := flr.remakeTx(tx, height, txTime)
-			if e != nil {
-				log4go.Info("flr.remakeTx error=%v\n", e)
-				continue
-			}
-			rt = append(rt, tkx)
+		//bigint, _ := big.NewInt(0).SetString(tx.Value, 0)
+		//if bigint.Int64() == 0 {
+		tkx, e := flr.remakeTx(tx, height, txTime)
+		if e != nil {
+			log4go.Info("flr.remakeTx error=%v\n", e)
+			continue
 		}
+		rt = append(rt, tkx)
+		//}
 	}
 	return rt, nil
 }
 
 func (flr *BlockFollower) checkExists(fooAddr string) bool {
-	return false
+	return flr.tokenDao.CheckContractExists(fooAddr)
 }
 
 func (flr *BlockFollower) remakeTx(tx *sdk.Transaction, height uint64, txTime int64) (*model.Tx, error) {
@@ -282,7 +280,12 @@ func (flr *BlockFollower) remakeTx(tx *sdk.Transaction, height uint64, txTime in
 		return nil, err
 	}
 
-	tmp := new(model.TxReceipt)
+	type Tmp struct {
+		Data *model.TxReceipt
+		Err  string
+	}
+
+	tmp := new(Tmp)
 
 	er := json.Unmarshal(buf, tmp)
 	if er != nil {
@@ -309,19 +312,27 @@ func (flr *BlockFollower) remakeTx(tx *sdk.Transaction, height uint64, txTime in
 		BlockHeight: height,
 		TxTime:      txTime,
 		Memo:        datastr,
-		Status:      tmp.Status,
+		Status:      tmp.Data.Status,
 	}
 
-	if tmp.ContractAddress != "0x0000000000000000000000000000000000000000" {
+	if tmp.Data.ContractAddress != "0x0000000000000000000000000000000000000000" {
 		mtx.TxType = 1
 	}
 
-	mtx.MinerFee = fmt.Sprintf("%d", tmp.GasUsed)
 
-	if len(tmp.Logs) > 0 && len(tmp.Logs[0].Topics) == 3 { //如果是智能合约的转账就把目的地址和交易额提出来
-		mtx.Contract = tmp.Logs[0].Address
-		mtx.AddrTo = util.CutAddress(tmp.Logs[0].Topics[2])
-		mtx.Amount = util.DataToValue(tmp.Logs[0].Data)
+	gasPriceBig,_ := big.NewInt(0).SetString(tx.GasPrice,0)
+	gused := big.NewInt(int64(tmp.Data.GasUsed))
+
+	realCost := gasPriceBig.Mul(gasPriceBig,gused)
+
+	flr.increaseGasTotal(realCost.Uint64())
+
+	mtx.MinerFee = realCost.String()
+
+	if len(tmp.Data.Logs) > 0 && len(tmp.Data.Logs[0].Topics) == 3 { //如果是智能合约的转账就把目的地址和交易额提出来
+		mtx.Contract = tmp.Data.Logs[0].Address
+		mtx.AddrTo = util.CutAddress(tmp.Data.Logs[0].Topics[2])
+		mtx.Amount = util.DataToValue(tmp.Data.Logs[0].Data)
 
 		fa_fr := &model.FollowAsset{
 			Contract: mtx.Contract,
@@ -337,7 +348,8 @@ func (flr *BlockFollower) remakeTx(tx *sdk.Transaction, height uint64, txTime in
 		flr.chan_fa <- fa_to
 
 	} else {
-		mtx.MinerFee = fmt.Sprintf("%d", tmp.GasUsed)
+		mtx.MinerFee = fmt.Sprintf("%d", tmp.Data.GasUsed)
+		mtx.Contract = "BUSD"
 	}
 	return mtx, nil
 }
@@ -393,12 +405,20 @@ func (flr *BlockFollower) setDealtBlockHeight(hei int64) error {
 }
 
 func (flr *BlockFollower) GetCurrentBlockHeight() (int64, error) {
-	cf := new(model.ChainInfo)
+
+	type TMP struct {
+		Data *model.ChainInfo
+		Err  string
+	}
+
+	cf := new(TMP)
 
 	buf, err := flr.requester.RequestHttpByGet("info", nil)
 	if err != nil {
 		return 0, err
 	}
+
+	//fmt.Printf("fuckbuf=%s\n",buf)
 
 	err = json.Unmarshal(buf, cf)
 
@@ -406,12 +426,43 @@ func (flr *BlockFollower) GetCurrentBlockHeight() (int64, error) {
 		return 0, err
 	}
 
-	hei, er := strconv.ParseInt(cf.LastBlockIndex, 10, 64)
+	if cf.Err != "" {
+		return 0, errors.New(cf.Err)
+	}
+
+	hei, er := strconv.ParseInt(cf.Data.LastBlockIndex, 10, 64)
 	if er != nil {
 		return 0, er
 	}
 
 	return hei, nil
+}
+
+func (flr *BlockFollower) GetTotalBUSD() (string, error) {
+
+	cf := struct {
+		Data struct {
+			Data string `json:"data"`
+		}
+		Err string
+	}{}
+
+	buf, err := flr.requester.RequestHttpByGet("totalbusd", nil)
+	if err != nil {
+		return "0", err
+	}
+
+	err = json.Unmarshal(buf, &cf)
+
+	if err != nil {
+		return "0", err
+	}
+
+	if cf.Err != "" {
+		return "", errors.New(cf.Err)
+	}
+
+	return cf.Data.Data, nil
 }
 
 func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, map[string]string, []*sdk.Transaction, error) {
@@ -423,6 +474,8 @@ func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, map[string]strin
 		return nil, nil, nil, err
 	}
 
+	//fmt.Printf("return buf=%s\n", buf)
+
 	type bk struct {
 		Index     uint64 `json:"Index"`
 		StateHash string `json:"StateHash"`
@@ -432,24 +485,39 @@ func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, map[string]strin
 		Body bk `json:"body"`
 	}
 
-	tmp := new(bd)
+	tmp := new(model.AlphaPing)
 
 	er := json.Unmarshal(buf, tmp)
 	if er != nil {
 		return nil, nil, nil, er
 	}
 
-	jb := string(buf)
-	fmt.Printf("to=%s\n", jb)
+	//jb := string(buf)
+	jbuf, e := json.Marshal(tmp.Data)
+	if e != nil {
+		log4go.Info("json.Marshal(tmp.Data) error=%v\n", e)
+		return nil, nil, nil, er
+	}
+	jb := string(jbuf)
+	//fmt.Printf("to=%s\n", jb)
 
 	txs, signerMap, err := sdk.GetTransactions(jb)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
+	//mdmap := tmp.Data.(map[string]interface{})
+
+	pmt := new(bd)
+
+	er = json.Unmarshal(jbuf, pmt)
+	if er != nil {
+		return nil, nil, nil, er
+	}
+
 	blk := &model.Block{
-		Height:    tmp.Body.Index,
-		Hash:      tmp.Body.StateHash,
+		Height:    pmt.Body.Index,
+		Hash:      pmt.Body.StateHash,
 		TxCount:   int32(len(txs)),
 		BlockTime: time.Now().UnixNano() / 1e6,
 	}
@@ -466,7 +534,12 @@ func (flr *BlockFollower) GetAccount(addr string) (*model.Account, error) {
 		return nil, err
 	}
 
-	tmp := new(model.Account)
+	type TMP struct {
+		Data *model.Account
+		Err  string
+	}
+
+	tmp := new(TMP)
 
 	er := json.Unmarshal(buf, tmp)
 
@@ -474,7 +547,11 @@ func (flr *BlockFollower) GetAccount(addr string) (*model.Account, error) {
 		return nil, er
 	}
 
-	return tmp, nil
+	if tmp.Err != "" {
+		return nil, errors.New(tmp.Err)
+	}
+
+	return tmp.Data, nil
 }
 
 func (flr *BlockFollower) SendRawTx(reqstr string) (string, error) {
@@ -485,7 +562,10 @@ func (flr *BlockFollower) SendRawTx(reqstr string) (string, error) {
 	}
 
 	tmp := struct {
-		TxHash string `json:"txHash"`
+		Data struct {
+			TxHash string `json:"txHash"`
+		}
+		Err string
 	}{}
 
 	er := json.Unmarshal(buf, &tmp)
@@ -494,7 +574,12 @@ func (flr *BlockFollower) SendRawTx(reqstr string) (string, error) {
 		return "", er
 	}
 
-	return tmp.TxHash, nil
+	if tmp.Err != "" {
+		log4go.Info("send raw tx =%s\n", tmp.Err)
+		return "", errors.New(tmp.Err)
+	}
+
+	return tmp.Data.TxHash, nil
 }
 
 func (flr *BlockFollower) getChildBalance(fa *model.FollowAsset) (string, error) {
@@ -504,8 +589,13 @@ func (flr *BlockFollower) getChildBalance(fa *model.FollowAsset) (string, error)
 		return "", err
 	}
 
+	fmt.Printf("postresult=%s\n", buf)
+
 	tmp := struct {
-		Data string `json:"data"`
+		Data struct {
+			Data string `json:"data"`
+		}
+		Err string
 	}{}
 
 	er := json.Unmarshal(buf, &tmp)
@@ -514,7 +604,11 @@ func (flr *BlockFollower) getChildBalance(fa *model.FollowAsset) (string, error)
 		return "", er
 	}
 
-	return tmp.Data, nil
+	if tmp.Err != "" {
+		return "", errors.New(tmp.Err)
+	}
+
+	return tmp.Data.Data, nil
 }
 
 /*
@@ -625,6 +719,25 @@ func (bf *BlockFollower) QueryTokenCount() (int64, error) {
 
 func (bf *BlockFollower) QuerySearchTokenCount(content string) (uint64, error) {
 	return bf.tokenDao.QueryCountByContent(content)
+}
+
+func (flr *BlockFollower) increaseGasTotal(gas uint64) {
+	total, e := flr.GeTotalGasCost()
+	if e != nil {
+		log4go.Info("flr.GeTotalGasCost error=%v\n", e)
+		return
+	}
+	if total == -1 {
+		total = int64(gas)
+	} else {
+		total = total + int64(gas)
+	}
+
+	e = flr.SetTotalGasCost(uint64(total))
+	if e != nil {
+		log4go.Info("flr.SetTotalGasCost error=%v\n", e)
+	}
+
 }
 
 func (flr *BlockFollower) SetTotalGasCost(gas uint64) error {

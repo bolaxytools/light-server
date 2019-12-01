@@ -41,3 +41,8 @@ type FollowAsset struct {
 	Address  string
 	Contract string
 }
+
+type AlphaPing struct {
+	Data interface{}
+	Err string
+}

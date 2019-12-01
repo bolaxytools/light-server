@@ -53,9 +53,26 @@ func (dao *TokenDao) QueryCount() (int64, error) {
 	return count, nil
 }
 
+func (dao *TokenDao) CheckContractExists(contract string) bool {
+	sql := "SELECT " +
+		"count(1) from token WHERE contract=?"
+	var count int64
+	err := dao.db.Get(&count, sql)
+
+	if err != nil {
+		return false
+	}
+
+	log4go.Debug("query sql=%s,rows=%d\n", sql, count)
+
+	return count>0
+}
+
+
+
 func (dao *TokenDao) QueryTokenByAddr(addr string, page, pageSize int32) ([]*model.Asset, error) {
 	sql := "SELECT " +
-		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals from follow f,token t where f.contract=t.contract and f.wallet = ? limit ?,?"
+		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals from follow f,token t where f.contract!='BUSD' and f.contract=t.contract and f.wallet = ? limit ?,?"
 	var assets []*model.Asset
 	er := dao.db.Select(&assets, sql, addr, (page-1)*pageSize, pageSize)
 	if er != nil {

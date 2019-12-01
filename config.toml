@@ -2,7 +2,7 @@
 port=8080
 server_origin="127.0.0.1"
 level_db_file_path="./wlt.core"
-bolaxy_node_url="http://192.168.10.189:8080"
+bolaxy_node_url="http://192.168.10.189:8082"
 def_host="192.168.9.189"
 def_port=8080
 def_chain_id="chainId100001"

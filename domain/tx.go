@@ -11,6 +11,14 @@ func GetHistory(addr string,page,size int32) ([]*model.Tx,error)  {
 	return txs,err
 }
 
+func GetTokenHistory(token,addr string,page,size int32) (int64,[]*model.Tx,error)  {
+	dao := mysql.NewTxDao()
+	i,txs,err := dao.QueryForChildToken(token,addr,page,size)
+	return i,txs,err
+}
+
+
+
 func GetLatestTx(page,size int32) ([]*model.Tx,error)  {
 	dao := mysql.NewTxDao()
 	txs,err := dao.QueryLatestTx(page,size)

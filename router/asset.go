@@ -84,15 +84,14 @@ func getTokenInfo(c *gin.Context) {
 		log4go.Info("flr.QueryAddrAssets error=%v\n", asts)
 	}
 
-	txs, err := domain.GetHistory(inner.Addr, inner.Page, inner.PageSize)
+	ct,txs, err := domain.GetTokenHistory(inner.Contract,inner.Addr, inner.Page, inner.PageSize)
 	if err != nil {
 		c.JSON(http.StatusOK, resp.NewErrorResp(werror.QueryError, err.Error()))
 		return
 	}
 
-	ct, _ := domain.GetContractTxTotal(inner.Contract)
 
-	txlist := resp.NewTxHistory(txs, ct)
+	txlist := resp.NewTxHistory(txs, uint64(ct))
 
 	resq := resp.NewChildInfo(asts, txlist)
 
