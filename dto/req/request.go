@@ -24,7 +24,7 @@ type ReqTxHash struct {
 }
 
 type ReqBlockHeight struct {
-	Height string `json:"height"` //区块高度
+	Height uint64 `json:"height"` //区块高度
 }
 
 type ReqSearch struct {

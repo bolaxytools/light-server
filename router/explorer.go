@@ -2,6 +2,7 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
+	"math/big"
 	"net/http"
 	"wallet-svc/domain"
 	"wallet-svc/dto/req"
@@ -213,7 +214,10 @@ func search(c *gin.Context) {
 		c.JSON(http.StatusOK, resp.NewSuccessResp(tx))
 		return
 	} else { //搜区块高度
-		blk, err := domain.GetBlockById(inner.Content)
+
+		heit,_ := big.NewInt(0).SetString(inner.Content,0)
+
+		blk, err := domain.GetBlockById(heit.Uint64())
 		if err != nil {
 			c.JSON(http.StatusOK, resp.NewErrorResp(werror.QueryError, err.Error()))
 			return

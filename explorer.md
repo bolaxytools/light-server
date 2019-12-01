@@ -400,7 +400,7 @@
 }
 ```
 
-5.圈子资产列表：/explore/getblock
+5.圈子资产列表：/explore/getassets
 
 ###### 请求数据：
 
@@ -514,13 +514,13 @@
 }
 ```
 
-7.获取指定交易：/explore/getblockbyid
+7.获取指定交易：/explore/gettxbyhash
 
 ###### 请求数据：
 
 | 字段 | 类型   | 说明             |
 | ---- | ------ | ---------------- |
-| txash|uint64|区块高度 |
+| txnash|string|交易hash |
 
 
 
@@ -529,7 +529,7 @@
 ```json
 {
 	"data":{
-		"height":"0"
+		"txnash":"0xaaaaabbbb"
 	},
 	"sign":"signedstring"
 }

@@ -66,7 +66,7 @@ func (dao *BlockDao) Query(page, pageSize int32) ([]*model.Block, error) {
 	return txs, nil
 }
 
-func (dao *BlockDao) GetBlockByHeight(height string) (*model.Block, error) {
+func (dao *BlockDao) GetBlockByHeight(height uint64) (*model.Block, error) {
 	blk := new(model.Block)
 	sql := "select " +
 		"* from `block` b where b.height =?"
