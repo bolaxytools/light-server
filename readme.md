@@ -6,7 +6,7 @@
 ├── dto	传输数据结构
 │   ├── req	请求数据
 │   └── resp	响应数据
-├── gerror	错误处理
+├── gerror	错误信息
 ├── model	逻辑数据结构模型定义
 ├── persist	持久化
 │   └── mysql	mysql持久化
