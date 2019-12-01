@@ -203,7 +203,8 @@ func search(c *gin.Context) {
 			Symbol:   "RHB",
 			Quantity: 23323245,
 		}
-		c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewAssetList(assets)))
+		ret := resp.NewSearchRet(resp.Ret_Addr,resp.NewAssetList(assets))
+		c.JSON(http.StatusOK, resp.NewSuccessResp(ret))
 		return
 	} else if lenth == hash_len { //搜交易hash
 		tx, err := domain.GetTxById(inner.Content)
@@ -211,7 +212,8 @@ func search(c *gin.Context) {
 			c.JSON(http.StatusOK, resp.NewErrorResp(werror.QueryError, err.Error()))
 			return
 		}
-		c.JSON(http.StatusOK, resp.NewSuccessResp(tx))
+		ret := resp.NewSearchRet(resp.Ret_Hash,tx)
+		c.JSON(http.StatusOK, resp.NewSuccessResp(ret))
 		return
 	} else { //搜区块高度
 
@@ -223,7 +225,8 @@ func search(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusOK, resp.NewSuccessResp(blk))
+		ret := resp.NewSearchRet(resp.Ret_Hash,blk)
+		c.JSON(http.StatusOK, resp.NewSuccessResp(ret))
 		return
 	}
 }

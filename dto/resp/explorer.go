@@ -2,6 +2,13 @@ package resp
 
 import "wallet-svc/model"
 
+
+const(
+	Ret_Addr = "dz"
+	Ret_Hash = "hx"
+	Ret_Height = "kg"
+)
+
 type IndexRet struct {
 	ChainId       string  `json:"chain_id"`        //圈子id
 	BlockCount    uint64  `json:"block_count"`     //总区块数
@@ -18,6 +25,13 @@ type IndexRet struct {
 type SearchRet struct {
 	RetType string      `json:"ret_type"` //dz-地址 hx-哈希 kg-块高
 	Data    interface{} `json:"data"`     //具体数据
+}
+
+func NewSearchRet(tp string,data interface{}) *SearchRet {
+	return &SearchRet{
+		RetType:tp,
+		Data:data,
+	}
 }
 
 /*
