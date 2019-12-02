@@ -52,3 +52,10 @@ func GetTxTotal() (uint64,error)  {
 	c,err := dao.QueryCount()
 	return uint64(c),err
 }
+
+func GetContractTxTotal(contract string) (uint64,error)  {
+	dao := mysql.NewTxDao()
+	c,err := dao.QueryContractTxCount(contract)
+	return uint64(c),err
+}
+

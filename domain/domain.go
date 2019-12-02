@@ -190,7 +190,6 @@ func (flr *BlockFollower) pa(lh, ch int64) bool {
 			}
 		}
 
-
 		er := flr.blockDao.Add(blk)
 		if er != nil {
 			log4go.Info("flr.blockDao.Add error=%v\n", er)
@@ -485,16 +484,17 @@ func (bf *BlockFollower) QueryAddrAssets(page, pageSize int32, addr string) ([]*
 	return bf.tokenDao.QueryTokenByAddr(addr, page, pageSize)
 }
 
+func (bf *BlockFollower) QueryAddrContractAsset(contract, addr string) (*model.Asset, error) {
+	return bf.tokenDao.QueryTokenByAddrAndContract(addr, contract)
+}
+
 func (bf *BlockFollower) QueryAllTokens(page, pageSize int32) ([]*resp.AssetInfo, error) {
 	return bf.tokenDao.QueryAllTokens(page, pageSize)
 }
 
-
-func (bf *BlockFollower) QueryAccountTokens(page, pageSize int32,addr string) ([]*resp.AssetInfo, error) {
-	return bf.tokenDao.QueryTokenByAddrForExplore(page, pageSize,addr)
+func (bf *BlockFollower) QueryAccountTokens(page, pageSize int32, addr string) ([]*resp.AssetInfo, error) {
+	return bf.tokenDao.QueryTokenByAddrForExplore(page, pageSize, addr)
 }
-
-
 
 func (bf *BlockFollower) QueryTokenCount() (int64, error) {
 	return bf.tokenDao.QueryCount()

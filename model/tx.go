@@ -10,6 +10,7 @@ type Tx struct {
 	BlockHeight uint64 `db:"block_height" json:"block_height"` //交易所在的区块块高
 	TxTime      int64  `db:"tx_time" json:"tx_time"`           //交易时间(因交易上没有时间，取块生成的时间，即block.time)
 	Memo        string `db:"memo" json:"memo"`                 //备注
+	Contract    string `db:"contract" json:"contract"`         //合约地址（如果有）
 }
 
 type Block struct {
@@ -26,12 +27,11 @@ type Address struct {
 	UpdateTime int64  `db:"update_time",json:"update_time"` //更新时间
 }
 
-
 type TxReceipt struct {
 	logs []ReceiptLog `json:"logs"`
 }
 
 type ReceiptLog struct {
 	Topics []string `json:"topics"` //为3个的才关心 第2个和第3个分别是from和to
-	Data string `json:"data"`
+	Data   string   `json:"data"`
 }

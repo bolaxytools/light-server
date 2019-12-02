@@ -11,13 +11,18 @@ import (
 */
 type ReqData struct {
 	Data interface{} `form:"data" json:"data"` //请求的数据包
-	// 此处不能用 interface{}，要换为map[string]interface{}
-	//Data interface{} `form:"data" json:"data,omitempty"` //请求的数据包
 	Sign string `form:"sign" json:"sign,omitempty"` //签名信息
 }
 
 type ReqBase struct {
 	Addr string `json:"addr"`
+}
+
+type ReqTokenInfo struct {
+	Addr     string `json:"addr"`     //地址
+	Contract string `json:"contract"` //合约地址
+	Page     int32  `json:"page"`
+	PageSize int32  `json:"page_size"`
 }
 
 type ReqFollow struct {

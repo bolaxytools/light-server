@@ -85,7 +85,7 @@ func (dao *TxDao) BatchSave(gds []*sdk.Transaction, height int64, txTime int64) 
 			if len(datastr)>100 {
 				datastr = datastr[0:100]
 			}
-			args = append(args, redistick.Hash, redistick.From, redistick.To, height, txTime, datastr, redistick.Value, redistick.Value)
+			args = append(args, redistick.Hash, redistick.From, redistick.To, height, txTime, datastr, redistick.Value, redistick.Gas)
 		}
 		_, errex := stmt.Exec(args...)
 
@@ -185,6 +185,21 @@ func (dao *TxDao) QueryCount() (int64, error) {
 		"count(1) from tx"
 	var count int64
 	err := dao.db.Get(&count, sql)
+
+	if err != nil {
+		return 0, err
+	}
+
+	log4go.Debug("query sql of tx count=%s,rows=%d\n", sql, count)
+
+	return count, nil
+}
+
+func (dao *TxDao) QueryContractTxCount(contract string) (int64, error) {
+	sql := "select " +
+		"count(1) from tx where contract=?"
+	var count int64
+	err := dao.db.Get(&count, sql,contract)
 
 	if err != nil {
 		return 0, err

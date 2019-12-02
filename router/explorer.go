@@ -187,7 +187,7 @@ func search(c *gin.Context) {
 	if lenth == addr_len { //搜地址
 		flr := domain.NewBlockFollower()
 
-		n, r := flr.GetAccount(inner.Addr)
+		n, r := flr.GetAccount(inner.Content)
 		if r != nil {
 			c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
 			return

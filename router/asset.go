@@ -7,6 +7,7 @@ import (
 	"wallet-svc/dto/req"
 	"wallet-svc/dto/resp"
 	"wallet-svc/model"
+	"wallet-svc/werror"
 
 	"net/http"
 )
@@ -17,6 +18,7 @@ func initAssetRouter() {
 	grp.POST("getnonce", getNonce)
 	grp.POST("followtoken", followToken)
 	grp.POST("searchtoken", searchToken)
+	grp.POST("tokeninfo", getTokenInfo)
 }
 
 /*
@@ -50,11 +52,50 @@ func getbalance(c *gin.Context) {
 	}
 
 	coinbox := &resp.AssetBox{
-		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: n.Balance.String(),Logo:"https://cdn.mytoken.org/Frdw6OBZGQhL5WaU2zvJEBgrh3FK",Desc:"BUSD",Decimals:18},
+		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: n.Balance.String(), Logo: "https://cdn.mytoken.org/Frdw6OBZGQhL5WaU2zvJEBgrh3FK", Desc: "BUSD", Decimals: 18},
 		ExtCoinList: asts,
 	}
 
 	c.JSON(http.StatusOK, resp.NewSuccessResp(coinbox))
+}
+
+/*
+	获取子币余额
+*/
+func getTokenInfo(c *gin.Context) {
+	reqdata := new(req.ReqData)
+	err := c.BindJSON(reqdata)
+	if err != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
+		return
+	}
+	inner := new(req.ReqTokenInfo)
+	err = reqdata.Reverse(inner)
+	if err != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
+		return
+	}
+
+	flr := domain.NewBlockFollower()
+
+	asts, er := flr.QueryAddrContractAsset(inner.Contract, inner.Addr)
+	if er != nil {
+		log4go.Info("flr.QueryAddrAssets error=%v\n", asts)
+	}
+
+	txs, err := domain.GetHistory(inner.Addr, inner.Page, inner.PageSize)
+	if err != nil {
+		c.JSON(http.StatusOK, resp.NewErrorResp(werror.QueryError, err.Error()))
+		return
+	}
+
+	ct, _ := domain.GetContractTxTotal(inner.Contract)
+
+	txlist := resp.NewTxHistory(txs, ct)
+
+	resq := resp.NewChildInfo(asts, txlist)
+
+	c.JSON(http.StatusOK, resp.NewSuccessResp(resq))
 }
 
 /*

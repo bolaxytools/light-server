@@ -64,6 +64,17 @@ func (dao *TokenDao) QueryTokenByAddr(addr string, page, pageSize int32) ([]*mod
 	return assets, nil
 }
 
+func (dao *TokenDao) QueryTokenByAddrAndContract(addr,contract string) (*model.Asset, error) {
+	sql := "SELECT " +
+		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals from follow f,token t where f.contract=t.contract and f.contract=? and f.wallet = ? limit 0,1"
+	assets := new(model.Asset)
+	er := dao.db.Get(assets, sql,contract,addr)
+	if er != nil {
+		return nil, er
+	}
+	return assets, nil
+}
+
 func (dao *TokenDao) QueryAllTokens(page, pageSize int32) ([]*resp.AssetInfo, error) {
 	if page < 1 {
 		page = 1

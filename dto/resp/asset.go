@@ -8,6 +8,18 @@ type AssetBox struct {
 	ExtCoinList []*model.Asset `json:"ext_coin_list"`
 }
 
+type ChildInfo struct {
+	Coin *model.Asset `json:"coin"`
+	TxList *TxHistory `json:"tx_list"`
+}
+
+func NewChildInfo(coin *model.Asset,txLis *TxHistory) *ChildInfo {
+	return &ChildInfo{
+		Coin:coin,
+		TxList:txLis,
+	}
+}
+
 type NonceObj struct {
 	Nonce uint64 `json:"nonce"`
 }
