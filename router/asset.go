@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"fmt"
+	"github.com/alecthomas/log4go"
 	"github.com/gin-gonic/gin"
 	"wallet-svc/domain"
 	"wallet-svc/dto/req"
@@ -45,7 +45,7 @@ func getbalance(c *gin.Context) {
 	}
 
 	coinbox := &resp.AssetBox{
-		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: fmt.Sprintf("%d", n.Balance/1e18)},
+		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: n.Balance.String()},
 		ExtCoinList: []*model.Asset{&model.Asset{Symbol: "Brc1", Balance: "100000"}, &model.Asset{Symbol: "Brc5", Balance: "900000"}},
 	}
 
@@ -69,6 +69,8 @@ func getNonce(c *gin.Context) {
 		return
 	}
 
+
+
 	flr := domain.NewBlockFollower()
 
 	n, r := flr.GetAccount(inner.Addr)
@@ -76,6 +78,8 @@ func getNonce(c *gin.Context) {
 		c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
 		return
 	}
+
+	log4go.Info("from:%s,nonce=%d\n",inner.Addr,n.Nonce)
 
 	coinbox := &resp.NonceObj{
 		Nonce: n.Nonce,
@@ -131,7 +135,7 @@ func searchToken(c *gin.Context) {
 
 	flr := domain.NewBlockFollower()
 
-	tkns, r := flr.SearchToken(inner.Content)
+	tkns, r := flr.SearchToken(inner.Content,inner.Addr)
 	if r != nil {
 		c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
 		return

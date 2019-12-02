@@ -30,7 +30,7 @@ func sendTx(c *gin.Context) {
 		return
 	}
 	inner := new(req.ReqSendTx)
-	err = reqdata.Reverse(inner)
+	err = reqdata.ReflectReverse(inner)
 	if err != nil {
 		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
 		return
@@ -38,7 +38,7 @@ func sendTx(c *gin.Context) {
 
 	flr := domain.NewBlockFollower()
 
-	log4go.Info("签过名的tx=%s\n",inner.SignedTx)
+	log4go.Info("交易发送者地址=%s，签过名的tx=%s\n",inner.Addr,inner.SignedTx)
 
 	txhash, err := flr.SendRawTx(inner.SignedTx)
 	if err != nil {

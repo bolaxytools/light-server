@@ -40,9 +40,6 @@ func (requester *Requester) RequestHttp(method string, endpoint string, params m
 		q.Add(key, val)
 	}
 
-
-
-
 	req.URL.RawQuery = q.Encode()
 
 	resp, err := client.Do(req)
@@ -58,13 +55,13 @@ func (requester *Requester) RequestHttp(method string, endpoint string, params m
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New("request error")
+		return nil, errors.New("request alpha ping error")
 	}
 
 	return buf, nil
 }
 func (requester *Requester) PostString(endpoint string, reqstr string) ([]byte, error) {
-	resp, err := http.Post(fmt.Sprintf("%s/rawtx/%s", requester.BaseUrl,), "text/plain", strings.NewReader(reqstr))
+	resp, err := http.Post(fmt.Sprintf("%s/rawtx", requester.BaseUrl,), "text/plain", strings.NewReader(reqstr))
 	if err != nil {
 		return nil,err
 	}
@@ -76,7 +73,7 @@ func (requester *Requester) PostString(endpoint string, reqstr string) ([]byte, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New("request error")
+		return nil, errors.New("request alpha ping error")
 	}
 
 	return buf, nil

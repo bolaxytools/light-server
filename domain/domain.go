@@ -50,20 +50,24 @@ func (bf *BlockFollower) procTxs() {
 				from := tx.From
 				to := tx.To
 				now := time.Now().UnixNano() / 1e6
-				fa := &model.Address{
-					Addr:       from,
-					AddTime:    now,
-					UpdateTime: now,
+				if len(from) > 0 {
+					fa := &model.Address{
+						Addr:       from,
+						AddTime:    now,
+						UpdateTime: now,
+					}
+					er := bf.addressDao.Add(fa)
+					log4go.Info("bf.addressDao.Add from error=%v\n", er)
 				}
-				er := bf.addressDao.Add(fa)
-				log4go.Info("bf.addressDao.Add from error=%v\n", er)
-				ta := &model.Address{
-					Addr:       to,
-					AddTime:    now,
-					UpdateTime: now,
+				if len(to) > 0 {
+					ta := &model.Address{
+						Addr:       to,
+						AddTime:    now,
+						UpdateTime: now,
+					}
+					er := bf.addressDao.Add(ta)
+					log4go.Info("bf.addressDao.Add to error=%v\n", er)
 				}
-				er = bf.addressDao.Add(ta)
-				log4go.Info("bf.addressDao.Add to error=%v\n", er)
 			}
 
 		}
@@ -305,12 +309,18 @@ func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, []*sdk.Transacti
 		return nil, nil, err
 	}
 
-	tmp := struct {
+	type bk struct {
 		Index     uint64 `json:"Index"`
 		StateHash string `json:"StateHash"`
-	}{}
+	}
 
-	er := json.Unmarshal(buf, &tmp)
+	type bd struct {
+		Body bk `json:"body"`
+	}
+
+	tmp := new(bd)
+
+	er := json.Unmarshal(buf, tmp)
 	if er != nil {
 		return nil, nil, er
 	}
@@ -323,8 +333,8 @@ func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, []*sdk.Transacti
 	}
 
 	blk := &model.Block{
-		Height:    tmp.Index,
-		Hash:      tmp.StateHash,
+		Height:    tmp.Body.Index,
+		Hash:      tmp.Body.StateHash,
 		TxCount:   int32(len(txs)),
 		BlockTime: time.Now().UnixNano() / 1e6,
 	}
@@ -445,8 +455,8 @@ func (bf *BlockFollower) FollowToken(contract, addr, balance string) error {
 	return bf.followDao.Add(flw)
 }
 
-func (bf *BlockFollower) SearchToken(content string) ([]*model.Token, error) {
-	return bf.followDao.QueryTokenByContract(1, 100, content)
+func (bf *BlockFollower) SearchToken(content,addr string) ([]*model.Token, error) {
+	return bf.followDao.QueryTokenByContract(1, 100, content,addr)
 }
 
 func (bf *BlockFollower) QuerySearchTokenCount(content string) (uint64, error) {

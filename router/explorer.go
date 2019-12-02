@@ -132,10 +132,8 @@ func getHistoryBlock(c *gin.Context) {
 		return
 	}
 
-	flr := domain.NewBlockFollower()
 
-	total, _ := flr.GetCurrentBlockHeight()
-	total += 1
+	total, _ := domain.GetBlockTotal()
 
 	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewBlockHistory(blk, uint64(total))))
 }

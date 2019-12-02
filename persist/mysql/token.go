@@ -56,7 +56,7 @@ func (dao *TokenDao) queryTokenByAddr(addr string) {
 
 }
 
-func (dao *FollowDao) QueryTokenByContract(page, pageSize int32, content string) ([]*model.Token, error) {
+func (dao *FollowDao) QueryTokenByContract(page, pageSize int32, content, addr string) ([]*model.Token, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -66,7 +66,7 @@ func (dao *FollowDao) QueryTokenByContract(page, pageSize int32, content string)
 	sql := "select " +
 		"* FROM token t where t.contract=? or t.symbol like ? limit ?,?"
 
-	like := fmt.Sprintf("%s%s%s","%",content,"%")
+	like := fmt.Sprintf("%s%s%s", "%", content, "%")
 
 	rows, err := dao.db.Queryx(sql, content, like, (page-1)*pageSize, pageSize)
 
@@ -76,13 +76,45 @@ func (dao *FollowDao) QueryTokenByContract(page, pageSize int32, content string)
 
 	var txs []*model.Token
 
+	var ctrcts []string
+
 	for rows.Next() {
-		tx := new(model.Token)
-		er := rows.StructScan(tx)
+		tkn := new(model.Token)
+		er := rows.StructScan(tkn)
 		if er != nil {
 			return nil, er
 		}
-		txs = append(txs, tx)
+
+		ctrcts = append(ctrcts, tkn.Contract)
+
+		txs = append(txs, tkn)
+	}
+
+	var addrs []string
+
+	if len(ctrcts) > 0 {
+		sql2 := "SELECT f.contract from  follow f  WHERE f.wallet = ? and f.contract in (?)"
+
+		query, args, err := sqlx.In(sql2, addr, ctrcts)
+		if err != nil {
+			return nil, err
+		}
+		query = dao.db.Rebind(query)
+
+		er := dao.db.Select(&addrs, query, args...)
+
+		if er != nil {
+			return nil, er
+		}
+
+		for _, ctt := range addrs {
+			for _, tknnnn := range txs {
+				if ctt == tknnnn.Contract {
+					tknnnn.Followed = true
+				}
+			}
+		}
+
 	}
 
 	log4go.Debug("query sql=%s,rows=%d\n", sql, len(txs))
@@ -95,7 +127,7 @@ func (dao *TokenDao) QueryCountByContent(content string) (uint64, error) {
 	sql := "select " +
 		"count(1) FROM token t where t.contract=? or t.symbol like ?"
 	var count uint64
-	err := dao.db.Get(&count, sql,content,content)
+	err := dao.db.Get(&count, sql, content, content)
 
 	if err != nil {
 		return 0, err

@@ -19,7 +19,7 @@ func NewBlockDao() *BlockDao {
 func (dao *BlockDao) Add(gd *model.Block) error {
 	sql := "INSERT INTO `block`(`height`, `hash`, `tx_count`, `block_time`) " +
 		"VALUES " +
-		"(:height, :hash, :addr_to, :tx_count, :block_time)"
+		"(:height, :hash, :tx_count, :block_time)"
 	re, err := dao.db.NamedExec(sql, gd)
 
 	if err != nil {
@@ -91,4 +91,19 @@ func (dao *BlockDao) GetBlockByHeightX(height uint64) (*model.Block, error) {
 	}
 
 	return blk, nil
+}
+
+func (dao *BlockDao) QueryCount() (int64, error) {
+	sql := "select " +
+		"count(1) from block"
+	var count int64
+	err := dao.db.Get(&count, sql)
+
+	if err != nil {
+		return 0, err
+	}
+
+	log4go.Debug("query sql of tx count=%s,rows=%d\n", sql, count)
+
+	return count, nil
 }

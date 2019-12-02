@@ -8,9 +8,12 @@ require (
 	github.com/gin-gonic/gin v1.3.0
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/jmoiron/sqlx v1.2.0
+	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/syndtr/goleveldb v1.0.0
+	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	google.golang.org/appengine v1.6.5 // indirect
+	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
 )
 
