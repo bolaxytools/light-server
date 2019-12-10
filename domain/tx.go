@@ -7,6 +7,30 @@ import (
 
 func GetHistory(addr string,page,size int32) ([]*model.Tx,error)  {
 	dao := mysql.NewTxDao()
-	txs,err := dao.Query(addr)
+	txs,err := dao.Query(addr,page,size)
+	return txs,err
+}
+
+func GetLatestTx(page,size int32) ([]*model.Tx,error)  {
+	dao := mysql.NewTxDao()
+	txs,err := dao.QueryLatestTx(page,size)
+	return txs,err
+}
+
+func GetTxById(txHash string) (*model.Tx,error)  {
+	dao := mysql.NewTxDao()
+	txs,err := dao.GetTxByHash(txHash)
+	return txs,err
+}
+
+func GetHistoryBlock(page,size int32) ([]*model.Block,error)  {
+	dao := mysql.NewBlockDao()
+	txs,err := dao.Query(page,size)
+	return txs,err
+}
+
+func GetBlockById(txHash string) (*model.Block,error)  {
+	dao := mysql.NewBlockDao()
+	txs,err := dao.GetBlockByHeight(txHash)
 	return txs,err
 }

@@ -13,3 +13,11 @@ func NewTxHistory(txs []*model.Tx) *TxHistory {
 type SendTxResp struct {
 	TxHash string `json:"tx_hash"`
 }
+
+type BlockHistory struct {
+	Blocks []*model.Block `json:"blocks"`
+}
+
+func NewBlockHistory(txs []*model.Block) *BlockHistory {
+	return &BlockHistory{Blocks:txs}
+}

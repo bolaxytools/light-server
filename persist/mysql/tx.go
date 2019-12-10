@@ -92,10 +92,16 @@ func (dao *TxDao) BashSave(gds []*sdk.Transaction,height int64,txTime int64) err
 	return nil
 }
 
-func (dao *TxDao) Query(addr string) ([]*model.Tx,error) {
+func (dao *TxDao) Query(addr string,page,pageSize int32) ([]*model.Tx,error) {
+	if page <1  {
+		page = 1
+	}
+	if pageSize<5 {
+		pageSize=5
+	}
 	sql := "select " +
-		"* from tx where addr_to = ? or addr_from = ? order by tx_time desc"
-	rows,err := dao.db.Queryx(sql,addr,addr)
+		"* from tx where addr_to = ? or addr_from = ? order by tx_time desc limit ?,?"
+	rows,err := dao.db.Queryx(sql,addr,addr,(page-1)*pageSize,pageSize)
 
 	if err != nil {
 		return nil,err
@@ -116,4 +122,52 @@ func (dao *TxDao) Query(addr string) ([]*model.Tx,error) {
 	log4go.Debug("query sql=%s,rows=%d\n", sql,len(txs))
 
 	return txs,nil
+}
+
+func (dao *TxDao) QueryLatestTx(page,pageSize int32) ([]*model.Tx,error) {
+	if page <1  {
+		page = 1
+	}
+	if pageSize<5 {
+		pageSize=5
+	}
+	sql := "select " +
+		"* from tx order by tx_time desc limit ?,?"
+	rows,err := dao.db.Queryx(sql,(page-1)*pageSize,pageSize)
+
+	if err != nil {
+		return nil,err
+	}
+
+	var txs []*model.Tx
+
+
+	for rows.Next() {
+		tx := new(model.Tx)
+		er := rows.StructScan(tx)
+		if er != nil {
+			return nil,er
+		}
+		txs = append(txs, tx)
+	}
+
+	log4go.Debug("query sql=%s,rows=%d\n", sql,len(txs))
+
+	return txs,nil
+}
+
+func (dao *TxDao) GetTxByHash(txHash string) (*model.Tx,error) {
+
+	sql := "select " +
+		"* from `tx` t where t.tx_hash=?"
+	tx  := new(model.Tx)
+	err := dao.db.Get(tx,sql,txHash)
+
+
+	if err != nil {
+		return nil,err
+	}
+
+
+	return tx,nil
 }

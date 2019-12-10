@@ -162,6 +162,8 @@ func (flr *BlockFollower) getDealtBlockHeight() (int64, error) {
 		return 0, er
 	}
 
+
+
 	p := binary.LittleEndian.Uint64(vf)
 	return int64(p), nil
 }
@@ -220,8 +222,6 @@ func (flr *BlockFollower) GetBlockTxs(hei int64) ([]*sdk.Transaction, error) {
 
 	return txs, nil
 }
-//0xcfce91565f523b0625677d8ba872edc35d1550f6bff7bf17f0c602a19d271a41
-//0x7a4ddce8ac9be67627c2582fde3fbdd61f44b31ecf42cdb7513e9539322e9c91
 
 func (flr *BlockFollower) GetNonce(addr string) (uint64, error) {
 

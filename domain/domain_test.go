@@ -1,8 +1,8 @@
 package domain
 
 import (
-	"encoding/binary"
 	"fmt"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"testing"
 	"wallet-svc/config"
 	"wallet-svc/mock"
@@ -14,7 +14,7 @@ var (
 
 func TestMain(m *testing.M) {
 	config.LoadConfig(mock.Getwd())
-	flr = NewBlockFollower("http://192.168.10.189:8080")
+	flr = NewBlockFollower()
 	m.Run()
 }
 
@@ -29,11 +29,8 @@ func TestBlockFollower_GetCurrentBlockHeight(t *testing.T) {
 }
 
 func TestLvdb(t *testing.T) {
-	k1 := []byte("k1")
-	v1 := make([]byte,16)
-
-	binary.LittleEndian.PutUint64(v1,4)
-
+	k1 := []byte("address.1")
+	v1 := []byte{0x1}
 
 	er := flr.db.Put(k1,v1,nil)
 	if er != nil {
@@ -41,15 +38,23 @@ func TestLvdb(t *testing.T) {
 		return
 	}
 
+	k2 := []byte("address.2")
 
-	vf,er := flr.db.Get(k1,nil)
+	er = flr.db.Put(k2,v1,nil)
 	if er != nil {
 		t.Error(er)
 		return
 	}
 
-	p := binary.LittleEndian.Uint64(vf)
-	fmt.Printf("get p = %d\n",p)
+
+	si,er := flr.db.SizeOf([]util.Range{
+		*util.BytesPrefix([]byte("address")),
+	})
+	if er != nil {
+		t.Error(er)
+		return
+	}
+	fmt.Printf("si=%v\n",si[0])
 
 
 }

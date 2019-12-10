@@ -22,6 +22,7 @@ var (
 
 func InitRouter() {
 	engine = gin.Default()
+	initExplorerRouter()
 	initAssetRouter()
 	initTxRouter()
 	initLeagueRouter()

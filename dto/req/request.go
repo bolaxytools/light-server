@@ -19,6 +19,18 @@ type ReqBase struct {
 	Addr string `json:"addr"`
 }
 
+type ReqTxHash struct {
+	Txnash string `json:"txnash"`
+}
+
+type ReqBlockHeight struct {
+	Height string `json:"height"` //区块高度
+}
+
+type ReqSearch struct {
+	Content string `json:"content"`	//搜索内容
+}
+
 type ReqListBase struct {
 	Addr string `json:"addr"`
 	Page int32 `json:"page"`

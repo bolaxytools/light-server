@@ -11,3 +11,17 @@ type Tx struct {
 	TxTime      int64  `db:"tx_time" json:"tx_time"`           //交易时间(因交易上没有时间，取块生成的时间，即block.time)
 	Memo        string `db:"memo" json:"memo"`                 //备注
 }
+
+type Block struct {
+	Height    uint64   `db:"height" json:"height"`         //区块高度
+	Hash      string   `db:"hash" json:"hash"`             //区块hash
+	TxCount   int32    `db:"tx_count" json:"tx_count"`     //交易数量
+	BlockTime int64    `db:"block_time" json:"block_time"` //区块时间
+	Signers   []string `db:"signers" json:"signers"`       //签名者
+}
+
+type Address struct {
+	Addr       string `db:"addr",json:"addr"`               //地址
+	AddTime    int64  `db:"add_time",json:"add_time"`       //添加时间
+	UpdateTime int64  `db:"update_time",json:"update_time"` //更新时间
+}
