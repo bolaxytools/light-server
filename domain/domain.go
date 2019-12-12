@@ -22,9 +22,40 @@ import (
 var bfr *BlockFollower
 
 type BlockFollower struct {
-	requester *httpclient.Requester
-	db        *leveldb.DB
-	txDao     *mysql.TxDao
+	requester  *httpclient.Requester
+	db         *leveldb.DB
+	txDao      *mysql.TxDao
+	addressDao *mysql.AddressDao
+	blockDao   *mysql.BlockDao
+	chan_txs   chan []*sdk.Transaction
+}
+
+func (bf *BlockFollower) procTxs() {
+	for {
+		select {
+		case txs := <-bf.chan_txs:
+			for _, tx := range txs {
+				from := tx.From
+				to := tx.To
+				now := time.Now().UnixNano() / 1e6
+				fa := &model.Address{
+					Addr:       from,
+					AddTime:    now,
+					UpdateTime: now,
+				}
+				er := bf.addressDao.Add(fa)
+				log4go.Info("bf.addressDao.Add from error=%v\n", er)
+				ta := &model.Address{
+					Addr:       to,
+					AddTime:    now,
+					UpdateTime: now,
+				}
+				er = bf.addressDao.Add(ta)
+				log4go.Info("bf.addressDao.Add to error=%v\n", er)
+			}
+
+		}
+	}
 }
 
 func NewLDBDatabase() (*leveldb.DB, error) {
@@ -68,11 +99,14 @@ func NewBlockFollower() *BlockFollower {
 		requester: &httpclient.Requester{
 			BaseUrl: config.Cfg.Global.BolaxyNodeUrl,
 		},
-
-		db:    tmp,
-		txDao: mysql.NewTxDao(),
+		db:         tmp,
+		txDao:      mysql.NewTxDao(),
+		addressDao: mysql.NewAddressDao(),
+		blockDao:   mysql.NewBlockDao(),
 	}
+	bfr.chan_txs = make(chan []*sdk.Transaction, 1024)
 
+	go bfr.procTxs()
 	return bfr
 }
 
@@ -93,21 +127,23 @@ func (flr *BlockFollower) FollowBlockChain() {
 			continue
 		}
 
-		log4go.Info("已处理到高度：%d，最新区块高度:%d\n",lastDealHei,curHei)
+		log4go.Info("已处理到高度：%d，最新区块高度:%d\n", lastDealHei, curHei)
 		if lastDealHei < curHei {
 
 			next := lastDealHei + 1
 
-			txs, err := flr.GetBlockTxs(next)
+			blk,txs, err := flr.GetBlockTxs(next)
 			if err != nil {
 				log4go.Info("flr.GetBlockTxs error=%v\n", err)
 				er := flr.setDealtBlockHeight(next)
 				if er != nil {
 					log4go.Info("flr.setDealtBlockHeight to %d\n", next)
 				}
-				time.Sleep(time.Second*30)
+				time.Sleep(time.Second * 30)
 				continue
 			}
+
+			flr.chan_txs <- txs //把爬到的交易扔到channel里去处理
 
 			nowmills := time.Now().UnixNano() / 1e6
 			err = flr.txDao.BashSave(txs, next, nowmills)
@@ -121,15 +157,20 @@ func (flr *BlockFollower) FollowBlockChain() {
 				continue
 			}
 
+			er := flr.blockDao.Add(blk)
+			if er != nil {
+				log4go.Info("flr.blockDao.Add error=%v\n",er)
+			}
+
 			log4go.Info("process block=%d success\n", next)
-			er := flr.setDealtBlockHeight(next)
+			er = flr.setDealtBlockHeight(next)
 			if er != nil {
 				log4go.Info("flr.setDealtBlockHeight to %d\n", next)
 			}
 
 		}
 
-		time.Sleep(time.Second*10)
+		time.Sleep(time.Second * 10)
 
 	}
 }
@@ -157,12 +198,10 @@ func (flr *BlockFollower) getDealtBlockHeight() (int64, error) {
 	vf, er := flr.db.Get(onlyKey(), nil)
 	if er != nil {
 		if er == errors.ErrNotFound {
-			return -1,nil
+			return -1, nil
 		}
 		return 0, er
 	}
-
-
 
 	p := binary.LittleEndian.Uint64(vf)
 	return int64(p), nil
@@ -204,23 +243,41 @@ func (flr *BlockFollower) GetCurrentBlockHeight() (int64, error) {
 	return hei, nil
 }
 
-func (flr *BlockFollower) GetBlockTxs(hei int64) ([]*sdk.Transaction, error) {
+func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block,[]*sdk.Transaction, error) {
 
 	endpoint := fmt.Sprintf("block/%d", hei)
 
 	buf, err := flr.requester.RequestHttpByGet(endpoint, nil)
 	if err != nil {
-		return nil, err
+		return nil,nil, err
+	}
+
+	tmp := struct {
+		Index uint64 `json:"Index"`
+		StateHash string `json:"StateHash"`
+	}{}
+
+	er := json.Unmarshal(buf,&tmp)
+	if er != nil {
+		return nil,nil,er
 	}
 
 	jb := string(buf)
 
 	txs, err := sdk.GetTransactions(jb)
 	if err != nil {
-		return nil, err
+		return nil,nil, err
 	}
 
-	return txs, nil
+	blk := &model.Block{
+		Height:tmp.Index,
+		Hash:tmp.StateHash,
+		TxCount:int32(len(txs)),
+		BlockTime:time.Now().UnixNano()/1e6,
+
+	}
+
+	return blk,txs, nil
 }
 
 func (flr *BlockFollower) GetNonce(addr string) (uint64, error) {
@@ -236,17 +293,16 @@ func (flr *BlockFollower) GetNonce(addr string) (uint64, error) {
 		Nonce uint64 `json:"nonce"`
 	}{}
 
-	er := json.Unmarshal(buf,&tmp)
+	er := json.Unmarshal(buf, &tmp)
 
 	if er != nil {
-		return 0,er
+		return 0, er
 	}
 
 	return tmp.Nonce, nil
 }
 
 func (flr *BlockFollower) SendRawTx(reqstr string) (string, error) {
-
 
 	buf, err := flr.requester.PostString("rawtx", reqstr)
 	if err != nil {
@@ -257,10 +313,10 @@ func (flr *BlockFollower) SendRawTx(reqstr string) (string, error) {
 		TxHash string `json:"txHash"`
 	}{}
 
-	er := json.Unmarshal(buf,&tmp)
+	er := json.Unmarshal(buf, &tmp)
 
 	if er != nil {
-		return "",er
+		return "", er
 	}
 
 	return tmp.TxHash, nil
@@ -273,10 +329,9 @@ func (flr *BlockFollower) AddToBlackList(addr string) error {
 
 	key := buildBlackKey(addr)
 	v := []byte{0x01}
-	er :=flr.db.Put(key,v,nil)
+	er := flr.db.Put(key, v, nil)
 	return er
 }
-
 
 /*
 	将某地址添加到白名单列表
@@ -285,7 +340,7 @@ func (flr *BlockFollower) AddToWhiteList(addr string) error {
 
 	key := buildWhiteKey(addr)
 	v := []byte{0x01}
-	er := flr.db.Put(key,v,nil)
+	er := flr.db.Put(key, v, nil)
 	return er
 }
 
@@ -295,11 +350,10 @@ func (flr *BlockFollower) AddToWhiteList(addr string) error {
 func (flr *BlockFollower) RemBlackList(addr string) error {
 
 	key := buildBlackKey(addr)
-	er := flr.db.Delete(key,nil)
+	er := flr.db.Delete(key, nil)
 
 	return er
 }
-
 
 /*
 	删除白名单列表
@@ -307,10 +361,9 @@ func (flr *BlockFollower) RemBlackList(addr string) error {
 func (flr *BlockFollower) RemWhiteList(addr string) error {
 
 	key := buildWhiteKey(addr)
-	er := flr.db.Delete(key,nil)
+	er := flr.db.Delete(key, nil)
 	return er
 }
-
 
 /*
 	是否存在于黑名单列表
@@ -318,11 +371,10 @@ func (flr *BlockFollower) RemWhiteList(addr string) error {
 func (flr *BlockFollower) CheckBlackList(addr string) bool {
 
 	key := buildBlackKey(addr)
-	_,er := flr.db.Get(key,nil)
+	_, er := flr.db.Get(key, nil)
 
-	return er==nil
+	return er == nil
 }
-
 
 /*
 	是否存在于白名单列表
@@ -330,6 +382,6 @@ func (flr *BlockFollower) CheckBlackList(addr string) bool {
 func (flr *BlockFollower) CheckWhiteList(addr string) bool {
 
 	key := buildWhiteKey(addr)
-	_,er := flr.db.Get(key,nil)
-	return er==nil
+	_, er := flr.db.Get(key, nil)
+	return er == nil
 }

@@ -11,9 +11,10 @@ import (
 func initLeagueRouter() {
 	grp := engine.Group("league", func(context *gin.Context) {})
 	grp.POST("checkjoin", checkJoin)
+	grp.POST("getdefaultleague", getDefaultLeague)
 }
 
-func checkJoin(c *gin.Context)  {
+func checkJoin(c *gin.Context) {
 
 	reqdata := new(req.ReqData)
 	err := c.BindJSON(reqdata)
@@ -33,11 +34,31 @@ func checkJoin(c *gin.Context)  {
 	white := flr.CheckWhiteList(inner.Addr)
 	black := flr.CheckWhiteList(inner.Addr)
 
-
 	//暂时先返回true，允许所有人拉取信息
 	rsp := &resp.CheckJoinResp{
-		Allow:!black||white||(!white&&!black),
+		Allow: !black || white || (!white && !black),
 	}
 
-	c.JSON(http.StatusOK,resp.NewSuccessResp(rsp))
+	c.JSON(http.StatusOK, resp.NewSuccessResp(rsp))
+}
+
+func getDefaultLeague(c *gin.Context) {
+
+	reqdata := new(req.ReqData)
+	err := c.BindJSON(reqdata)
+	if err != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
+		return
+	}
+	inner := new(req.ReqBase)
+	err = reqdata.Reverse(inner)
+	if err != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
+		return
+	}
+
+	//暂时先返回true，允许所有人拉取信息
+	rsp := resp.NewLeagueItem("chainid10001", "默认圈", "33.66.88.99", "这是一个默认的圈子", 4444)
+
+	c.JSON(http.StatusOK, resp.NewSuccessResp(rsp))
 }
