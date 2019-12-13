@@ -167,7 +167,21 @@ func (dao *TxDao) GetTxByHash(txHash string) (*model.Tx,error) {
 	if err != nil {
 		return nil,err
 	}
-
-
 	return tx,nil
+}
+
+
+func (dao *TxDao) QueryCount() (int64, error) {
+	sql := "select " +
+		"count(1) from tx"
+	var count int64
+	err := dao.db.Get(&count, sql)
+
+	if err != nil {
+		return 0, err
+	}
+
+	log4go.Debug("query sql of tx count=%s,rows=%d\n", sql, count)
+
+	return count, nil
 }

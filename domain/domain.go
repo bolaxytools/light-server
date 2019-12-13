@@ -30,6 +30,14 @@ type BlockFollower struct {
 	chan_txs   chan []*sdk.Transaction
 }
 
+func (bf *BlockFollower) GetAddressCount() uint64 {
+	c,e := bf.addressDao.QueryCount()
+	if e != nil {
+		return 0
+	}
+	return uint64(c)
+}
+
 func (bf *BlockFollower) procTxs() {
 	for {
 		select {

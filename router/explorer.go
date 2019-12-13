@@ -41,10 +41,17 @@ func index(c *gin.Context) {
 		return
 	}
 
+	flr := domain.NewBlockFollower()
+	hei,err := flr.GetCurrentBlockHeight()
+	if err != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
+		return
+	}
+
 	ret := &resp.IndexRet{
 		ChainId:       "chainId10011",
-		BlockCount:    10068,
-		AddressCount:  22322,
+		BlockCount:    uint64(hei),
+		AddressCount:  flr.GetAddressCount(),
 		MainCoinCount: 72774,
 		TxCount:       8842,
 		CrossMax:      100000,
