@@ -1,12 +1,4 @@
 
-// 这是一份用于实验GoSwagger的学习代码
-//
-//	Schemes: http, https
-//	Host: 192.168.10.153
-//	BasePath: v1
-//	Version: 0.0.1
-//
-// swagger:meta
 package controller
 
 import (
@@ -26,6 +18,8 @@ var (
 
 func InitRouter() {
 	engine = gin.Default()
+
+
 	engine.LoadHTMLGlob("resources/*/*.html")
 	files, err := ioutil.ReadDir("resources/pages")
 	if err != nil {
@@ -40,6 +34,9 @@ func InitRouter() {
 			context.HTML(http.StatusOK, fn, gin.H{})
 		})
 	}
+
+	engine.Static("img", "resources/static/img")
+	engine.Static("css", "resources/static/css")
 
 	initExplorerRouter()
 	initAssetRouter()

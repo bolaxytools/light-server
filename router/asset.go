@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"wallet-svc/domain"
 	"wallet-svc/dto/req"
@@ -12,7 +13,7 @@ import (
 func initAssetRouter() {
 	grp := engine.Group("asset", func(context *gin.Context) {})
 	grp.POST("getbalance", getbalance)
-	grp.POST("getnonce",  getNonce)
+	grp.POST("getnonce", getNonce)
 }
 
 /*
@@ -33,14 +34,21 @@ func getbalance(c *gin.Context) {
 		return
 	}
 
+	flr := domain.NewBlockFollower()
+
+	n, r := flr.GetAccount(inner.Addr)
+	if r != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
+		return
+	}
+
 	coinbox := &resp.AssetBox{
-		MainCoin:&resp.Asset{Symbol:"Box",Balance:"100"},
-		ExtCoinList:[]*resp.Asset{&resp.Asset{Symbol:"Brc1",Balance:"100000"},&resp.Asset{Symbol:"Brc5",Balance:"900000"}},
+		MainCoin:    &resp.Asset{Symbol: "BUSD", Balance: fmt.Sprintf("%d", n.Balance)},
+		ExtCoinList: []*resp.Asset{&resp.Asset{Symbol: "Brc1", Balance: "100000"}, &resp.Asset{Symbol: "Brc5", Balance: "900000"}},
 	}
 
 	c.JSON(http.StatusOK, resp.NewSuccessResp(coinbox))
 }
-
 
 /*
 	获取nonce值
@@ -62,14 +70,14 @@ func getNonce(c *gin.Context) {
 
 	flr := domain.NewBlockFollower()
 
-	n,r := flr.GetNonce(inner.Addr)
+	n, r := flr.GetAccount(inner.Addr)
 	if r != nil {
 		c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
 		return
 	}
 
 	coinbox := &resp.NonceObj{
-		Nonce:n,
+		Nonce: n.Nonce,
 	}
 
 	c.JSON(http.StatusOK, resp.NewSuccessResp(coinbox))

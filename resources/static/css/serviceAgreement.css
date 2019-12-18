@@ -1,0 +1,43 @@
+* {
+  padding: 0;
+  margin: 0;
+}
+
+.container {
+  width: 335px;
+  margin: 0 auto;
+  padding-bottom: 20px;
+}
+
+.title {
+  padding: 16px 0 40px 0;
+}
+
+h3 {
+  font-family: PingFangSC-Medium;
+  font-size: 20px;
+  color: #2F3B53;
+  text-align: center;
+}
+
+.title p {
+  font-family: PingFangSC-Regular;
+  font-size: 12px;
+  color: #95A2B3;
+  padding-top: 7px;
+  text-align: center;
+}
+
+.honorific {
+  font-family: PingFangSC-Regular;
+  font-size: 14px;
+  color: #2F3B53;
+  padding-bottom: 10px;
+}
+
+.content {
+  font-family: PingFangSC-Regular;
+  font-size: 14px;
+  color: #2F3B53;
+  text-align: justify;
+}

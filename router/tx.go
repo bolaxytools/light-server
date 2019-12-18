@@ -13,7 +13,7 @@ import (
 func initTxRouter() {
 	grp := engine.Group("tx", func(context *gin.Context) {})
 	grp.POST("sendtx", sendTx)
-	grp.POST("getlatesttx", getLatestTx)
+	grp.POST("gethistory", getLatestTx)
 	grp.POST("gettxbyhash", getTxById)
 
 
@@ -37,7 +37,6 @@ func sendTx(c *gin.Context) {
 		return
 	}
 
-	//TODO send tx to block chain
 	flr := domain.NewBlockFollower()
 
 	txhash, err := flr.SendRawTx(inner.SignedTx)
@@ -70,7 +69,7 @@ func getLatestTx(c *gin.Context) {
 		return
 	}
 
-	txs, err := domain.GetLatestTx(inner.Page, inner.PageSize)
+	txs, err := domain.GetHistory(inner.Addr,inner.Page, inner.PageSize)
 	if err != nil {
 		c.JSON(http.StatusOK, resp.NewErrorResp(werror.QueryError, err.Error()))
 		return

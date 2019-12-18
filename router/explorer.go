@@ -48,12 +48,19 @@ func index(c *gin.Context) {
 		return
 	}
 
+
+	txtotal,er := domain.GetTxTotal()
+	if er != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(er.Error()))
+		return
+	}
+
 	ret := &resp.IndexRet{
 		ChainId:       "chainId10011",
 		BlockCount:    uint64(hei),
 		AddressCount:  flr.GetAddressCount(),
 		MainCoinCount: 72774,
-		TxCount:       8842,
+		TxCount:       txtotal,
 		CrossMax:      100000,
 		GasCostCount:  29929229,
 	}

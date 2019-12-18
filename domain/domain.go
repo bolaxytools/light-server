@@ -288,26 +288,24 @@ func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block,[]*sdk.Transactio
 	return blk,txs, nil
 }
 
-func (flr *BlockFollower) GetNonce(addr string) (uint64, error) {
+func (flr *BlockFollower) GetAccount(addr string) (*model.Account, error) {
 
 	endpoint := fmt.Sprintf("account/%s", addr)
 
 	buf, err := flr.requester.RequestHttpByGet(endpoint, nil)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	tmp := struct {
-		Nonce uint64 `json:"nonce"`
-	}{}
+	tmp := new(model.Account)
 
-	er := json.Unmarshal(buf, &tmp)
+	er := json.Unmarshal(buf, tmp)
 
 	if er != nil {
-		return 0, er
+		return nil, er
 	}
 
-	return tmp.Nonce, nil
+	return tmp, nil
 }
 
 func (flr *BlockFollower) SendRawTx(reqstr string) (string, error) {

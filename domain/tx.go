@@ -34,3 +34,9 @@ func GetBlockById(txHash string) (*model.Block,error)  {
 	txs,err := dao.GetBlockByHeight(txHash)
 	return txs,err
 }
+
+func GetTxTotal() (uint64,error)  {
+	dao := mysql.NewTxDao()
+	c,err := dao.QueryCount()
+	return uint64(c),err
+}

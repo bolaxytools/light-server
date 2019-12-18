@@ -3,6 +3,7 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"wallet-svc/config"
 	"wallet-svc/domain"
 	"wallet-svc/dto/req"
 	"wallet-svc/dto/resp"
@@ -57,8 +58,10 @@ func getDefaultLeague(c *gin.Context) {
 		return
 	}
 
+	glb := config.Cfg.Global
+
 	//暂时先返回true，允许所有人拉取信息
-	rsp := resp.NewLeagueItem("chainid10001", "默认圈", "33.66.88.99", "这是一个默认的圈子", 4444)
+	rsp := resp.NewLeagueItem(glb.DefChainId, glb.DefName, glb.DefHost, glb.DefDesc, glb.DefPort)
 
 	c.JSON(http.StatusOK, resp.NewSuccessResp(rsp))
 }
