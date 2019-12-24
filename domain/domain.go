@@ -11,12 +11,14 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"math/big"
 	"strconv"
 	"time"
 	"wallet-svc/config"
 	"wallet-svc/httpclient"
 	"wallet-svc/model"
 	"wallet-svc/persist/mysql"
+	"wallet-svc/util"
 )
 
 var bfr *BlockFollower
@@ -27,11 +29,13 @@ type BlockFollower struct {
 	txDao      *mysql.TxDao
 	addressDao *mysql.AddressDao
 	blockDao   *mysql.BlockDao
+	tokenDao   *mysql.TokenDao
+	followDao  *mysql.FollowDao
 	chan_txs   chan []*sdk.Transaction
 }
 
 func (bf *BlockFollower) GetAddressCount() uint64 {
-	c,e := bf.addressDao.QueryCount()
+	c, e := bf.addressDao.QueryCount()
 	if e != nil {
 		return 0
 	}
@@ -111,6 +115,8 @@ func NewBlockFollower() *BlockFollower {
 		txDao:      mysql.NewTxDao(),
 		addressDao: mysql.NewAddressDao(),
 		blockDao:   mysql.NewBlockDao(),
+		tokenDao:   mysql.NewTokenDao(),
+		followDao:  mysql.NewFollowDao(),
 	}
 	bfr.chan_txs = make(chan []*sdk.Transaction, 1024)
 
@@ -140,7 +146,7 @@ func (flr *BlockFollower) FollowBlockChain() {
 
 			next := lastDealHei + 1
 
-			blk,txs, err := flr.GetBlockTxs(next)
+			blk, txs, err := flr.GetBlockTxs(next)
 			if err != nil {
 				log4go.Info("flr.GetBlockTxs error=%v\n", err)
 				er := flr.setDealtBlockHeight(next)
@@ -154,6 +160,7 @@ func (flr *BlockFollower) FollowBlockChain() {
 			flr.chan_txs <- txs //把爬到的交易扔到channel里去处理
 
 			nowmills := time.Now().UnixNano() / 1e6
+
 			err = flr.txDao.BashSave(txs, next, nowmills)
 			if err != nil {
 				log4go.Info("flr.txDao.BashSave error=%v\n", err)
@@ -167,7 +174,7 @@ func (flr *BlockFollower) FollowBlockChain() {
 
 			er := flr.blockDao.Add(blk)
 			if er != nil {
-				log4go.Info("flr.blockDao.Add error=%v\n",er)
+				log4go.Info("flr.blockDao.Add error=%v\n", er)
 			}
 
 			log4go.Info("process block=%d success\n", next)
@@ -181,6 +188,45 @@ func (flr *BlockFollower) FollowBlockChain() {
 		time.Sleep(time.Second * 10)
 
 	}
+}
+
+func (flr *BlockFollower) Translate(txs []*sdk.Transaction) error {
+	for _, tx := range txs {
+		bigint, _ := big.NewInt(0).SetString(tx.Value, 0)
+		if bigint.Int64() == 0 && flr.checkExists(tx.To) { //TODO 判断to的地址是不是在登记的池里，如果在就是智能合约转账
+			return flr.remakeTx(tx)
+		}
+	}
+	return nil
+}
+
+func (flr *BlockFollower) checkExists(fooAddr string) bool {
+	return false
+}
+
+func (flr *BlockFollower) remakeTx(tx *sdk.Transaction) error {
+	endpoint := fmt.Sprintf("tx/%s", tx.Hash)
+
+	buf, err := flr.requester.RequestHttpByGet(endpoint, nil)
+	if err != nil {
+		return err
+	}
+
+	tmp := new(model.ReceiptLog)
+
+	er := json.Unmarshal(buf, tmp)
+	if er != nil {
+		return er
+	}
+
+	if len(tmp.Topics) != 3 {
+		return errors.New("not brc20 transfer")
+	}
+
+	tx.To = util.CutAddress(tmp.Topics[2])
+	tx.Value = util.DataToValue(tmp.Data)
+
+	return nil
 }
 
 func onlyKey() []byte {
@@ -226,7 +272,6 @@ func (flr *BlockFollower) setDealtBlockHeight(hei int64) error {
 		return er
 	}
 	return nil
-
 }
 
 func (flr *BlockFollower) GetCurrentBlockHeight() (int64, error) {
@@ -251,41 +296,40 @@ func (flr *BlockFollower) GetCurrentBlockHeight() (int64, error) {
 	return hei, nil
 }
 
-func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block,[]*sdk.Transaction, error) {
+func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, []*sdk.Transaction, error) {
 
 	endpoint := fmt.Sprintf("block/%d", hei)
 
 	buf, err := flr.requester.RequestHttpByGet(endpoint, nil)
 	if err != nil {
-		return nil,nil, err
+		return nil, nil, err
 	}
 
 	tmp := struct {
-		Index uint64 `json:"Index"`
+		Index     uint64 `json:"Index"`
 		StateHash string `json:"StateHash"`
 	}{}
 
-	er := json.Unmarshal(buf,&tmp)
+	er := json.Unmarshal(buf, &tmp)
 	if er != nil {
-		return nil,nil,er
+		return nil, nil, er
 	}
 
 	jb := string(buf)
 
 	txs, err := sdk.GetTransactions(jb)
 	if err != nil {
-		return nil,nil, err
+		return nil, nil, err
 	}
 
 	blk := &model.Block{
-		Height:tmp.Index,
-		Hash:tmp.StateHash,
-		TxCount:int32(len(txs)),
-		BlockTime:time.Now().UnixNano()/1e6,
-
+		Height:    tmp.Index,
+		Hash:      tmp.StateHash,
+		TxCount:   int32(len(txs)),
+		BlockTime: time.Now().UnixNano() / 1e6,
 	}
 
-	return blk,txs, nil
+	return blk, txs, nil
 }
 
 func (flr *BlockFollower) GetAccount(addr string) (*model.Account, error) {
@@ -390,4 +434,21 @@ func (flr *BlockFollower) CheckWhiteList(addr string) bool {
 	key := buildWhiteKey(addr)
 	_, er := flr.db.Get(key, nil)
 	return er == nil
+}
+
+func (bf *BlockFollower) FollowToken(contract, addr, balance string) error {
+	flw := &model.Follow{
+		Contract: contract,
+		Wallet:   addr,
+		Balance:  balance,
+	}
+	return bf.followDao.Add(flw)
+}
+
+func (bf *BlockFollower) SearchToken(content string) ([]*model.Token, error) {
+	return bf.followDao.QueryTokenByContract(1, 100, content)
+}
+
+func (bf *BlockFollower) QuerySearchTokenCount(content string) (uint64, error) {
+	return bf.tokenDao.QueryCountByContent(content)
 }

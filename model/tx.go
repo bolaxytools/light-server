@@ -25,3 +25,13 @@ type Address struct {
 	AddTime    int64  `db:"add_time",json:"add_time"`       //添加时间
 	UpdateTime int64  `db:"update_time",json:"update_time"` //更新时间
 }
+
+
+type TxReceipt struct {
+	logs []ReceiptLog `json:"logs"`
+}
+
+type ReceiptLog struct {
+	Topics []string `json:"topics"` //为3个的才关心 第2个和第3个分别是from和to
+	Data string `json:"data"`
+}

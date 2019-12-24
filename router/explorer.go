@@ -1,12 +1,13 @@
 package controller
 
 import (
+	"database/sql"
 	"github.com/gin-gonic/gin"
-	"math/big"
 	"net/http"
 	"wallet-svc/domain"
 	"wallet-svc/dto/req"
 	"wallet-svc/dto/resp"
+	"wallet-svc/util"
 	"wallet-svc/werror"
 )
 
@@ -23,6 +24,7 @@ func initExplorerRouter() {
 	group.POST("getassets", getAssetInfo)
 	group.POST("search", search)
 	group.POST("getblockbyid", getBlockById)
+	group.POST("gettxbyhash", getTxById)
 }
 
 /*
@@ -43,14 +45,13 @@ func index(c *gin.Context) {
 	}
 
 	flr := domain.NewBlockFollower()
-	hei,err := flr.GetCurrentBlockHeight()
+	hei, err := flr.GetCurrentBlockHeight()
 	if err != nil {
 		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
 		return
 	}
 
-
-	txtotal,er := domain.GetTxTotal()
+	txtotal, er := domain.GetTxTotal()
 	if er != nil {
 		c.JSON(http.StatusOK, resp.BindJsonErrorResp(er.Error()))
 		return
@@ -103,8 +104,9 @@ func getTxHistory(c *gin.Context) {
 		c.JSON(http.StatusOK, resp.NewErrorResp(werror.QueryError, err.Error()))
 		return
 	}
+	total, _ := domain.GetTxTotal()
 
-	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewTxHistory(txs)))
+	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewTxHistory(txs, total)))
 }
 
 /*
@@ -130,7 +132,12 @@ func getHistoryBlock(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewBlockHistory(blk)))
+	flr := domain.NewBlockFollower()
+
+	total, _ := flr.GetCurrentBlockHeight()
+	total += 1
+
+	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewBlockHistory(blk, uint64(total))))
 }
 
 /*
@@ -167,7 +174,7 @@ func getAssetInfo(c *gin.Context) {
 		Quantity: 23323245,
 	}
 
-	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewAssetList(assets)))
+	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewAssetList(assets,2)))
 }
 
 func search(c *gin.Context) {
@@ -203,29 +210,32 @@ func search(c *gin.Context) {
 			Symbol:   "RHB",
 			Quantity: 23323245,
 		}
-		ret := resp.NewSearchRet(resp.Ret_Addr,resp.NewAssetList(assets))
+		ret := resp.NewSearchRet(resp.Ret_Addr, resp.NewAssetList(assets,2))
 		c.JSON(http.StatusOK, resp.NewSuccessResp(ret))
 		return
 	} else if lenth == hash_len { //搜交易hash
 		tx, err := domain.GetTxById(inner.Content)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			c.JSON(http.StatusOK, resp.NewErrorResp(werror.QueryError, err.Error()))
 			return
 		}
-		ret := resp.NewSearchRet(resp.Ret_Hash,tx)
+		ret := resp.NewSearchRet(resp.Ret_Hash, tx)
 		c.JSON(http.StatusOK, resp.NewSuccessResp(ret))
 		return
 	} else { //搜区块高度
 
-		heit,_ := big.NewInt(0).SetString(inner.Content,0)
-
-		blk, err := domain.GetBlockById(heit.Uint64())
-		if err != nil {
+		if !util.IsNumber(inner.Content) {
+			ret := resp.NewSearchRet(resp.Ret_Height, nil)
+			c.JSON(http.StatusOK, resp.NewSuccessResp(ret))
+			return
+		}
+		blk, err := domain.GetBlockById(inner.Content)
+		if err != nil && err != sql.ErrNoRows {
 			c.JSON(http.StatusOK, resp.NewErrorResp(werror.QueryError, err.Error()))
 			return
 		}
 
-		ret := resp.NewSearchRet(resp.Ret_Hash,blk)
+		ret := resp.NewSearchRet(resp.Ret_Height, blk)
 		c.JSON(http.StatusOK, resp.NewSuccessResp(ret))
 		return
 	}
@@ -248,7 +258,7 @@ func getBlockById(c *gin.Context) {
 		return
 	}
 
-	blk, err := domain.GetBlockById(inner.Height)
+	blk, err := domain.GetBlockByHeight(inner.Height)
 	if err != nil {
 		c.JSON(http.StatusOK, resp.NewErrorResp(werror.QueryError, err.Error()))
 		return

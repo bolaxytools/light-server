@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/boxproject/bolaxy/cmd/sdk"
 	"testing"
@@ -102,10 +103,23 @@ func TestAddressDao_Get(t *testing.T) {
 	dao := NewTxDao()
 
 
-	tx,e := dao.GetTxByHash("0x250fb43c0a76d9f8cdbde67c0c97ffa285d9f5622ea7a7d6397c85eecc8a28d3")
+	tx,e := dao.GetTxByHash("0x250fb43c0a76d9f8cdbde67c0c97ffa285d9f5622ea7a7d6397c85eecc8a28dx")
 	if e != nil {
+		if e == sql.ErrNoRows {
+			fmt.Printf("ojbk")
+			return
+		}
 		t.Error(e)
 		return
 	}
 	fmt.Printf("success,tx=%+v\n!!!",tx)
+}
+
+func TestCount(t *testing.T)  {
+	c,e := NewTxDao().QueryCount()
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	fmt.Printf("c=%d\n",c)
 }

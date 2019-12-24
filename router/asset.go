@@ -6,6 +6,7 @@ import (
 	"wallet-svc/domain"
 	"wallet-svc/dto/req"
 	"wallet-svc/dto/resp"
+	"wallet-svc/model"
 
 	"net/http"
 )
@@ -14,12 +15,13 @@ func initAssetRouter() {
 	grp := engine.Group("asset", func(context *gin.Context) {})
 	grp.POST("getbalance", getbalance)
 	grp.POST("getnonce", getNonce)
+	grp.POST("followtoken", followToken)
+	grp.POST("searchtoken", searchToken)
 }
 
 /*
 	获取余额
 */
-// swagger:route POST /asset/getbalance users UpdateUserResponseWrapper
 func getbalance(c *gin.Context) {
 	reqdata := new(req.ReqData)
 	err := c.BindJSON(reqdata)
@@ -43,8 +45,8 @@ func getbalance(c *gin.Context) {
 	}
 
 	coinbox := &resp.AssetBox{
-		MainCoin:    &resp.Asset{Symbol: "BUSD", Balance: fmt.Sprintf("%d", n.Balance)},
-		ExtCoinList: []*resp.Asset{&resp.Asset{Symbol: "Brc1", Balance: "100000"}, &resp.Asset{Symbol: "Brc5", Balance: "900000"}},
+		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: fmt.Sprintf("%d", n.Balance/1e18)},
+		ExtCoinList: []*model.Asset{&model.Asset{Symbol: "Brc1", Balance: "100000"}, &model.Asset{Symbol: "Brc5", Balance: "900000"}},
 	}
 
 	c.JSON(http.StatusOK, resp.NewSuccessResp(coinbox))
@@ -53,7 +55,6 @@ func getbalance(c *gin.Context) {
 /*
 	获取nonce值
 */
-// swagger:route POST /asset/getbalance users UpdateUserResponseWrapper
 func getNonce(c *gin.Context) {
 	reqdata := new(req.ReqData)
 	err := c.BindJSON(reqdata)
@@ -81,4 +82,68 @@ func getNonce(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp.NewSuccessResp(coinbox))
+}
+
+/*
+	关注币种
+*/
+func followToken(c *gin.Context) {
+	reqdata := new(req.ReqData)
+	err := c.BindJSON(reqdata)
+	if err != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
+		return
+	}
+	inner := new(req.ReqFollow)
+	err = reqdata.Reverse(inner)
+	if err != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
+		return
+	}
+
+	flr := domain.NewBlockFollower()
+
+	r := flr.FollowToken(inner.Contract, inner.Addr, "0")
+	if r != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, resp.NewSuccessResp(nil))
+}
+
+/*
+	搜索币种
+*/
+func searchToken(c *gin.Context) {
+	reqdata := new(req.ReqData)
+	err := c.BindJSON(reqdata)
+	if err != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
+		return
+	}
+	inner := new(req.ReqSearch)
+	err = reqdata.Reverse(inner)
+	if err != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(err.Error()))
+		return
+	}
+
+	flr := domain.NewBlockFollower()
+
+	tkns, r := flr.SearchToken(inner.Content)
+	if r != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
+		return
+	}
+
+	total, r := flr.QuerySearchTokenCount(inner.Content)
+
+	if r != nil {
+		c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
+		return
+	}
+
+	ret := resp.NewSearchTokenRet(tkns, total)
+	c.JSON(http.StatusOK, resp.NewSuccessResp(ret))
 }

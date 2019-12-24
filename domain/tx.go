@@ -29,9 +29,15 @@ func GetHistoryBlock(page,size int32) ([]*model.Block,error)  {
 	return txs,err
 }
 
-func GetBlockById(txHash uint64) (*model.Block,error)  {
+func GetBlockById(txHash string) (*model.Block,error)  {
 	dao := mysql.NewBlockDao()
 	txs,err := dao.GetBlockByHeight(txHash)
+	return txs,err
+}
+
+func GetBlockByHeight(txHash uint64) (*model.Block,error)  {
+	dao := mysql.NewBlockDao()
+	txs,err := dao.GetBlockByHeightX(txHash)
 	return txs,err
 }
 

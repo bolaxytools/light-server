@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"github.com/alecthomas/log4go"
 	"github.com/gin-gonic/gin"
 	"wallet-svc/domain"
 	"wallet-svc/dto/req"
@@ -15,8 +16,6 @@ func initTxRouter() {
 	grp.POST("sendtx", sendTx)
 	grp.POST("gethistory", getLatestTx)
 	grp.POST("gettxbyhash", getTxById)
-
-
 }
 
 /*
@@ -38,6 +37,8 @@ func sendTx(c *gin.Context) {
 	}
 
 	flr := domain.NewBlockFollower()
+
+	log4go.Info("签过名的tx=%s\n",inner.SignedTx)
 
 	txhash, err := flr.SendRawTx(inner.SignedTx)
 	if err != nil {
@@ -75,7 +76,9 @@ func getLatestTx(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewTxHistory(txs)))
+	ct,_ := domain.GetTxTotal()
+
+	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewTxHistory(txs,ct)))
 }
 
 /*

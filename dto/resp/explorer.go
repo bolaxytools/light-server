@@ -38,12 +38,14 @@ func NewSearchRet(tp string,data interface{}) *SearchRet {
 	地址资产信息
 */
 type AssetsInfo struct {
+	Total uint64 `json:"total"`
 	AssetList []*AssetInfo `json:"asset_list"` //资产列表
 }
 
-func NewAssetList(assets []*AssetInfo) *AssetsInfo {
+func NewAssetList(assets []*AssetInfo,total uint64) *AssetsInfo {
 	return &AssetsInfo{
 		AssetList:assets,
+		Total:total,
 	}
 }
 

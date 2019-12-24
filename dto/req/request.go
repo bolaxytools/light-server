@@ -19,6 +19,11 @@ type ReqBase struct {
 	Addr string `json:"addr"`
 }
 
+type ReqFollow struct {
+	Addr string `json:"addr"`
+	Contract string `json:"contract"`
+}
+
 type ReqTxHash struct {
 	Txnash string `json:"txnash"`
 }
