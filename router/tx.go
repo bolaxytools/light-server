@@ -70,13 +70,13 @@ func getLatestTx(c *gin.Context) {
 		return
 	}
 
-	txs, err := domain.GetHistory(inner.Addr,inner.Page, inner.PageSize)
+	log4go.Info("tx gethistory page=%d,page_size=%d\n",inner.Page,inner.PageSize)
+
+	ct,txs, err := domain.GetHistory(inner.Addr,inner.Page, inner.PageSize)
 	if err != nil {
 		c.JSON(http.StatusOK, resp.NewErrorResp(werror.QueryError, err.Error()))
 		return
 	}
-
-	ct,_ := domain.GetTxTotal()
 
 	c.JSON(http.StatusOK, resp.NewSuccessResp(resp.NewTxHistory(txs,ct)))
 }

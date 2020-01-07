@@ -33,12 +33,15 @@ func TestGoodsDao_AddAsset(t *testing.T) {
 
 func TestGoodsDao_QueryTxs(t *testing.T) {
 	dao := NewTxDao()
-	asset := "bx0001"
-	txs,er := dao.Query(asset,1,5)
+	asset := "0x4Af5d14047815771Cf06c3E2c5572C41FCaadC93"
+	ct,txs,er := dao.Query(asset,1,5)
 	if er != nil {
 		t.Error(er)
 		return
 	}
+
+
+	fmt.Printf("ct=%d\n",ct)
 	for _,tx := range txs {
 		fmt.Printf("%+v\n",tx)
 	}

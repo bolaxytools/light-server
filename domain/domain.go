@@ -319,11 +319,10 @@ func (flr *BlockFollower) remakeTx(tx *sdk.Transaction, height uint64, txTime in
 		mtx.TxType = 1
 	}
 
-
-	gasPriceBig,_ := big.NewInt(0).SetString(tx.GasPrice,0)
+	gasPriceBig, _ := big.NewInt(0).SetString(tx.GasPrice, 0)
 	gused := big.NewInt(int64(tmp.Data.GasUsed))
 
-	realCost := gasPriceBig.Mul(gasPriceBig,gused)
+	realCost := gasPriceBig.Mul(gasPriceBig, gused)
 
 	flr.increaseGasTotal(realCost.Uint64())
 
@@ -348,7 +347,6 @@ func (flr *BlockFollower) remakeTx(tx *sdk.Transaction, height uint64, txTime in
 		flr.chan_fa <- fa_to
 
 	} else {
-		mtx.MinerFee = fmt.Sprintf("%d", tmp.Data.GasUsed)
 		mtx.Contract = "BUSD"
 	}
 	return mtx, nil
@@ -697,7 +695,7 @@ func (bf *BlockFollower) SearchToken(content, addr string) ([]*model.Token, erro
 	return bf.followDao.QueryTokenByContract(1, 100, content, addr)
 }
 
-func (bf *BlockFollower) QueryAddrAssets(page, pageSize int32, addr string) ([]*model.Asset, error) {
+func (bf *BlockFollower)  QueryAddrAssets(page, pageSize int32, addr string) ([]*model.Asset, error) {
 	return bf.tokenDao.QueryTokenByAddr(addr, page, pageSize)
 }
 

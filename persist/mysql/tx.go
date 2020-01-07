@@ -99,19 +99,30 @@ func (dao *TxDao) BatchSave(gds []*sdk.Transaction, height int64, txTime int64) 
 	return nil
 }
 
-func (dao *TxDao) Query(addr string, page, pageSize int32) ([]*model.Tx, error) {
+func (dao *TxDao) Query(addr string, page, pageSize int32) (uint64,[]*model.Tx, error) {
 	if page < 1 {
 		page = 1
 	}
 	if pageSize < 5 {
 		pageSize = 5
 	}
+
+	sql1 := "select " +
+		"count(1) from tx t left JOIN token tk on t.contract=tk.contract where addr_to = ? or addr_from = ?"
+
+	var count uint64
+
+	er := dao.db.Get(&count,sql1,addr, addr)
+	if er != nil {
+		return 0,nil,er
+	}
+
 	sql := "select " +
 		"t.*,tk.symbol from tx t left JOIN token tk on t.contract=tk.contract where addr_to = ? or addr_from = ? order by tx_time desc limit ?,?"
 	rows, err := dao.db.Queryx(sql, addr, addr, (page-1)*pageSize, pageSize)
 
 	if err != nil {
-		return nil, err
+		return 0,nil, err
 	}
 
 	var txs []*model.Tx
@@ -120,14 +131,14 @@ func (dao *TxDao) Query(addr string, page, pageSize int32) ([]*model.Tx, error) 
 		tx := new(model.Tx)
 		er := rows.StructScan(tx)
 		if er != nil {
-			return nil, er
+			return 0,nil, er
 		}
 		txs = append(txs, tx)
 	}
 
 	log4go.Debug("query sql=%s,rows=%d\n", sql, len(txs))
 
-	return txs, nil
+	return count,txs, nil
 }
 
 func (dao *TxDao) QueryForChildToken(child,addr string, page, pageSize int32) (int64,[]*model.Tx, error) {

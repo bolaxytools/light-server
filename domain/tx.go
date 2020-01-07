@@ -5,10 +5,9 @@ import (
 	"wallet-svc/persist/mysql"
 )
 
-func GetHistory(addr string,page,size int32) ([]*model.Tx,error)  {
+func GetHistory(addr string,page,size int32) (uint64,[]*model.Tx,error)  {
 	dao := mysql.NewTxDao()
-	txs,err := dao.Query(addr,page,size)
-	return txs,err
+	return dao.Query(addr,page,size)
 }
 
 func GetTokenHistory(token,addr string,page,size int32) (int64,[]*model.Tx,error)  {

@@ -72,7 +72,7 @@ func (dao *TokenDao) CheckContractExists(contract string) bool {
 
 func (dao *TokenDao) QueryTokenByAddr(addr string, page, pageSize int32) ([]*model.Asset, error) {
 	sql := "SELECT " +
-		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals from follow f,token t where f.contract!='BUSD' and f.contract=t.contract and f.wallet = ? limit ?,?"
+		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals from follow f left join token t on t.contract=f.contract where f.followed=true and f.contract!='BUSD' and f.contract=t.contract and f.wallet = ? limit ?,?"
 	var assets []*model.Asset
 	er := dao.db.Select(&assets, sql, addr, (page-1)*pageSize, pageSize)
 	if er != nil {
@@ -83,7 +83,7 @@ func (dao *TokenDao) QueryTokenByAddr(addr string, page, pageSize int32) ([]*mod
 
 func (dao *TokenDao) QueryTokenByAddrAndContract(addr, contract string) (*model.Asset, error) {
 	sql := "SELECT " +
-		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals from follow f,token t where f.contract=t.contract and f.contract=? and f.wallet = ? limit 0,1"
+		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals from follow f left join token t on f.contract=t.contract where t.contract=? and f.followed=true and f.wallet = ? limit 0,1"
 	assets := new(model.Asset)
 	er := dao.db.Get(assets, sql, contract, addr)
 	if er != nil {

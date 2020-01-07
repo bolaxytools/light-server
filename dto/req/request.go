@@ -76,7 +76,7 @@ func (reqdata *ReqData) ReflectReverse(ptr interface{}) error {
 		if mv == nil {
 			continue
 		}
-		log4go.Info("mv.type=%T\n", mv)
+		//log4go.Info("mv.type=%T\n", mv)
 
 		switch kd {
 		case reflect.String:

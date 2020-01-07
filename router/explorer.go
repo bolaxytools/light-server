@@ -76,7 +76,7 @@ func index(c *gin.Context) {
 		MainCoinCount: busd,
 		TxCount:       txtotal,
 		CrossMax:      100000,
-		GasCostCount:  float64(togas),
+		GasCostCount:  uint64(togas),
 	}
 
 	txs, err := domain.GetLatestTx(1, 5)

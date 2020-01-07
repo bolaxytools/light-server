@@ -15,7 +15,7 @@ type IndexRet struct {
 	MainCoinCount string `json:"main_coin_count"` //积分币总数
 	TxCount       uint64  `json:"tx_count"`        //总交易数
 	CrossMax      float64 `json:"cross_max"`       //总跨链币数
-	GasCostCount  float64 `json:"gas_cost_count"`  //全网消耗gas总量
+	GasCostCount  uint64 `json:"gas_cost_count"`  //全网消耗gas总量
 
 	Txs    []*model.Tx    `json:"txs"`    //最新交易
 	Blocks []*model.Block `json:"blocks"` //最新区块
