@@ -2,16 +2,16 @@
 port=8080
 server_origin="127.0.0.1"
 level_db_file_path="./wlt.core"
-bolaxy_node_url="http://192.168.10.189:8082"
-def_host="192.168.9.189"
+bolaxy_node_url="http://127.0.0.1:8082"
+def_host="127.0.0.1"
 def_port=8080
 def_chain_id="chainId100001"
 def_name="默认圈子"
 def_desc="圈子的一些描述"
 
 [MySQL]
-user="root"
-pasw="12348765"
+user="user"
+pasw="password"
 prot="tcp"
 host="127.0.0.1"
 port="3306"

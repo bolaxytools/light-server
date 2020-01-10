@@ -1,31 +1,27 @@
 package domain
 
 import (
-	"bytes"
-	"encoding/binary"
-	"encoding/json"
-	"fmt"
 	"github.com/alecthomas/log4go"
 	"github.com/boxproject/bolaxy/cmd/sdk"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"math/big"
-	"strconv"
 	"time"
 	"wallet-svc/config"
 	"wallet-svc/dto/resp"
 	"wallet-svc/httpclient"
 	"wallet-svc/model"
 	"wallet-svc/persist/mysql"
-	"wallet-svc/util"
 )
 
 var (
 	bfr *BlockFollower
 )
 
+/*
+	block follower
+*/
 type BlockFollower struct {
 	requester  *httpclient.Requester
 	db         *leveldb.DB
@@ -38,6 +34,9 @@ type BlockFollower struct {
 	chan_fa    chan *model.FollowAsset
 }
 
+/*
+	get the count of addresses
+*/
 func (bf *BlockFollower) GetAddressCount() uint64 {
 	c, e := bf.addressDao.QueryCount()
 	if e != nil {
@@ -46,6 +45,9 @@ func (bf *BlockFollower) GetAddressCount() uint64 {
 	return uint64(c)
 }
 
+/*
+	process transactions
+*/
 func (bf *BlockFollower) procTxs() {
 	for {
 		select {
@@ -82,6 +84,9 @@ func (bf *BlockFollower) procTxs() {
 	}
 }
 
+/*
+	if an address followed a brc coin,we should keep its balance
+*/
 func (bf *BlockFollower) procFollowAssetBalance() {
 
 	for {
@@ -109,6 +114,10 @@ func (bf *BlockFollower) procFollowAssetBalance() {
 	}
 }
 
+
+/*
+	instantiate level database
+*/
 func NewLDBDatabase() (*leveldb.DB, error) {
 
 	// Ensure we have some minimal caching and file guarantees
@@ -136,6 +145,9 @@ func NewLDBDatabase() (*leveldb.DB, error) {
 	return db, nil
 }
 
+/*
+instantiate Block Follower
+*/
 func NewBlockFollower() *BlockFollower {
 
 	if bfr != nil {
@@ -165,6 +177,9 @@ func NewBlockFollower() *BlockFollower {
 	return bfr
 }
 
+/*
+	watch the block chain,follow it when it raise
+*/
 func (flr *BlockFollower) FollowBlockChain() {
 	for {
 		lastDealHei, er := flr.getDealtBlockHeight()
@@ -189,6 +204,9 @@ func (flr *BlockFollower) FollowBlockChain() {
 	}
 }
 
+/*
+	follow block chain by step
+	*/
 func (flr *BlockFollower) pa(lh, ch int64) bool {
 	log4go.Info("已处理到高度：%d，最新区块高度:%d\n", lh, ch)
 	if lh < ch {
@@ -252,427 +270,16 @@ func (flr *BlockFollower) pa(lh, ch int64) bool {
 	return true
 }
 
-func (flr *BlockFollower) translate(txs []*sdk.Transaction, height uint64, txTime int64) ([]*model.Tx, error) {
-	var rt []*model.Tx
-	for _, tx := range txs {
-		//bigint, _ := big.NewInt(0).SetString(tx.Value, 0)
-		//if bigint.Int64() == 0 {
-		tkx, e := flr.remakeTx(tx, height, txTime)
-		if e != nil {
-			log4go.Info("flr.remakeTx error=%v\n", e)
-			continue
-		}
-		rt = append(rt, tkx)
-		//}
-	}
-	return rt, nil
-}
-
+/*
+	check weather a contract address exists in the db
+*/
 func (flr *BlockFollower) checkExists(fooAddr string) bool {
 	return flr.tokenDao.CheckContractExists(fooAddr)
 }
 
-func (flr *BlockFollower) remakeTx(tx *sdk.Transaction, height uint64, txTime int64) (*model.Tx, error) {
-	endpoint := fmt.Sprintf("tx/%s", tx.Hash)
-
-	buf, err := flr.requester.RequestHttpByGet(endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	type Tmp struct {
-		Data *model.TxReceipt
-		Err  string
-	}
-
-	tmp := new(Tmp)
-
-	er := json.Unmarshal(buf, tmp)
-	if er != nil {
-		return nil, er
-	}
-
-	_, c, sbf := sdk.UnWrapData(tx.Data)
-
-	datastr := ""
-	if c == sdk.DataDisplay {
-		datastr = string(sbf)
-	}
-
-	if len(datastr) > 100 {
-		datastr = datastr[0:100]
-	}
-	mtx := &model.Tx{
-		TxType:      0,
-		AddrFrom:    tx.From,
-		AddrTo:      tx.To,
-		Amount:      tx.Value,
-		MinerFee:    fmt.Sprintf("%d", tx.Gas),
-		TxHash:      tx.Hash,
-		BlockHeight: height,
-		TxTime:      txTime,
-		Memo:        datastr,
-		Status:      tmp.Data.Status,
-	}
-
-	if tmp.Data.ContractAddress != "0x0000000000000000000000000000000000000000" {
-		mtx.TxType = 1
-	}
-
-	gasPriceBig, _ := big.NewInt(0).SetString(tx.GasPrice, 0)
-	gused := big.NewInt(int64(tmp.Data.GasUsed))
-
-	realCost := gasPriceBig.Mul(gasPriceBig, gused)
-
-	flr.increaseGasTotal(realCost.Uint64())
-
-	mtx.MinerFee = realCost.String()
-
-	if len(tmp.Data.Logs) > 0 && len(tmp.Data.Logs[0].Topics) == 3 { //如果是智能合约的转账就把目的地址和交易额提出来
-		mtx.Contract = tmp.Data.Logs[0].Address
-		mtx.AddrTo = util.CutAddress(tmp.Data.Logs[0].Topics[2])
-		mtx.Amount = util.DataToValue(tmp.Data.Logs[0].Data)
-
-		fa_fr := &model.FollowAsset{
-			Contract: mtx.Contract,
-			Address:  mtx.AddrFrom,
-		}
-
-		flr.chan_fa <- fa_fr
-
-		fa_to := &model.FollowAsset{
-			Contract: mtx.Contract,
-			Address:  mtx.AddrTo,
-		}
-		flr.chan_fa <- fa_to
-
-	} else {
-		mtx.Contract = "BUSD"
-	}
-	return mtx, nil
-}
-
-func onlyKey() []byte {
-	k := []byte{0x01}
-	return k
-}
-
-func gasKey() []byte {
-	k := []byte{0x04}
-	return k
-}
-
-func buildWhiteKey(addr string) []byte {
-	k := []byte{0x03}
-	buf := bytes.NewBuffer(k)
-	buf.WriteString(addr)
-	return buf.Bytes()
-}
-
-func buildBlackKey(addr string) []byte {
-	k := []byte{0x02}
-	buf := bytes.NewBuffer(k)
-	buf.WriteString(addr)
-	return buf.Bytes()
-}
-
-func (flr *BlockFollower) getDealtBlockHeight() (int64, error) {
-	vf, er := flr.db.Get(onlyKey(), nil)
-	if er != nil {
-		if er == errors.ErrNotFound {
-			return -1, nil
-		}
-		return 0, er
-	}
-
-	p := binary.LittleEndian.Uint64(vf)
-	return int64(p), nil
-}
-
-func (flr *BlockFollower) setDealtBlockHeight(hei int64) error {
-	k1 := onlyKey()
-	v1 := make([]byte, 16)
-
-	binary.LittleEndian.PutUint64(v1, uint64(hei))
-
-	er := flr.db.Put(k1, v1, nil)
-	if er != nil {
-		return er
-	}
-	return nil
-}
-
-func (flr *BlockFollower) GetCurrentBlockHeight() (int64, error) {
-
-	type TMP struct {
-		Data *model.ChainInfo
-		Err  string
-	}
-
-	cf := new(TMP)
-
-	buf, err := flr.requester.RequestHttpByGet("info", nil)
-	if err != nil {
-		return 0, err
-	}
-
-	//fmt.Printf("fuckbuf=%s\n",buf)
-
-	err = json.Unmarshal(buf, cf)
-
-	if err != nil {
-		return 0, err
-	}
-
-	if cf.Err != "" {
-		return 0, errors.New(cf.Err)
-	}
-
-	hei, er := strconv.ParseInt(cf.Data.LastBlockIndex, 10, 64)
-	if er != nil {
-		return 0, er
-	}
-
-	return hei, nil
-}
-
-func (flr *BlockFollower) GetTotalBUSD() (string, error) {
-
-	cf := struct {
-		Data struct {
-			Data string `json:"data"`
-		}
-		Err string
-	}{}
-
-	buf, err := flr.requester.RequestHttpByGet("totalbusd", nil)
-	if err != nil {
-		return "0", err
-	}
-
-	err = json.Unmarshal(buf, &cf)
-
-	if err != nil {
-		return "0", err
-	}
-
-	if cf.Err != "" {
-		return "", errors.New(cf.Err)
-	}
-
-	return cf.Data.Data, nil
-}
-
-func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, map[string]string, []*sdk.Transaction, error) {
-
-	endpoint := fmt.Sprintf("block/%d", hei)
-
-	buf, err := flr.requester.RequestHttpByGet(endpoint, nil)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	//fmt.Printf("return buf=%s\n", buf)
-
-	type bk struct {
-		Index     uint64 `json:"Index"`
-		StateHash string `json:"StateHash"`
-	}
-
-	type bd struct {
-		Body bk `json:"body"`
-	}
-
-	tmp := new(model.AlphaPing)
-
-	er := json.Unmarshal(buf, tmp)
-	if er != nil {
-		return nil, nil, nil, er
-	}
-
-	//jb := string(buf)
-	jbuf, e := json.Marshal(tmp.Data)
-	if e != nil {
-		log4go.Info("json.Marshal(tmp.Data) error=%v\n", e)
-		return nil, nil, nil, er
-	}
-	jb := string(jbuf)
-	//fmt.Printf("to=%s\n", jb)
-
-	txs, signerMap, err := sdk.GetTransactions(jb)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	//mdmap := tmp.Data.(map[string]interface{})
-
-	pmt := new(bd)
-
-	er = json.Unmarshal(jbuf, pmt)
-	if er != nil {
-		return nil, nil, nil, er
-	}
-
-	blk := &model.Block{
-		Height:    pmt.Body.Index,
-		Hash:      pmt.Body.StateHash,
-		TxCount:   int32(len(txs)),
-		BlockTime: time.Now().UnixNano() / 1e6,
-	}
-
-	return blk, signerMap, txs, nil
-}
-
-func (flr *BlockFollower) GetAccount(addr string) (*model.Account, error) {
-
-	endpoint := fmt.Sprintf("account/%s", addr)
-
-	buf, err := flr.requester.RequestHttpByGet(endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	type TMP struct {
-		Data *model.Account
-		Err  string
-	}
-
-	tmp := new(TMP)
-
-	er := json.Unmarshal(buf, tmp)
-
-	if er != nil {
-		return nil, er
-	}
-
-	if tmp.Err != "" {
-		return nil, errors.New(tmp.Err)
-	}
-
-	return tmp.Data, nil
-}
-
-func (flr *BlockFollower) SendRawTx(reqstr string) (string, error) {
-
-	buf, err := flr.requester.PostString("rawtx", reqstr)
-	if err != nil {
-		return "", err
-	}
-
-	tmp := struct {
-		Data struct {
-			TxHash string `json:"txHash"`
-		}
-		Err string
-	}{}
-
-	er := json.Unmarshal(buf, &tmp)
-
-	if er != nil {
-		return "", er
-	}
-
-	if tmp.Err != "" {
-		log4go.Info("send raw tx =%s\n", tmp.Err)
-		return "", errors.New(tmp.Err)
-	}
-
-	return tmp.Data.TxHash, nil
-}
-
-func (flr *BlockFollower) getChildBalance(fa *model.FollowAsset) (string, error) {
-
-	buf, err := flr.requester.PostJson("balanceof", fa)
-	if err != nil {
-		return "", err
-	}
-
-	fmt.Printf("postresult=%s\n", buf)
-
-	tmp := struct {
-		Data struct {
-			Data string `json:"data"`
-		}
-		Err string
-	}{}
-
-	er := json.Unmarshal(buf, &tmp)
-
-	if er != nil {
-		return "", er
-	}
-
-	if tmp.Err != "" {
-		return "", errors.New(tmp.Err)
-	}
-
-	return tmp.Data.Data, nil
-}
-
 /*
-	将某地址添加到黑名单列表
+	follow a token,add it to wallet
 */
-func (flr *BlockFollower) AddToBlackList(addr string) error {
-
-	key := buildBlackKey(addr)
-	v := []byte{0x01}
-	er := flr.db.Put(key, v, nil)
-	return er
-}
-
-/*
-	将某地址添加到白名单列表
-*/
-func (flr *BlockFollower) AddToWhiteList(addr string) error {
-
-	key := buildWhiteKey(addr)
-	v := []byte{0x01}
-	er := flr.db.Put(key, v, nil)
-	return er
-}
-
-/*
-	删除黑名单列表
-*/
-func (flr *BlockFollower) RemBlackList(addr string) error {
-
-	key := buildBlackKey(addr)
-	er := flr.db.Delete(key, nil)
-
-	return er
-}
-
-/*
-	删除白名单列表
-*/
-func (flr *BlockFollower) RemWhiteList(addr string) error {
-
-	key := buildWhiteKey(addr)
-	er := flr.db.Delete(key, nil)
-	return er
-}
-
-/*
-	是否存在于黑名单列表
-*/
-func (flr *BlockFollower) CheckBlackList(addr string) bool {
-
-	key := buildBlackKey(addr)
-	_, er := flr.db.Get(key, nil)
-
-	return er == nil
-}
-
-/*
-	是否存在于白名单列表
-*/
-func (flr *BlockFollower) CheckWhiteList(addr string) bool {
-
-	key := buildWhiteKey(addr)
-	_, er := flr.db.Get(key, nil)
-	return er == nil
-}
-
 func (bf *BlockFollower) FollowToken(contract, addr, balance string) error {
 	flw := &model.Follow{
 		Contract: contract,
@@ -691,75 +298,51 @@ func (bf *BlockFollower) FollowToken(contract, addr, balance string) error {
 	return bf.followDao.Add(flw)
 }
 
+/*
+	search a token,the content which can be a contract address or symbol
+*/
 func (bf *BlockFollower) SearchToken(content, addr string) ([]*model.Token, error) {
 	return bf.followDao.QueryTokenByContract(1, 100, content, addr)
 }
 
-func (bf *BlockFollower)  QueryAddrAssets(page, pageSize int32, addr string) ([]*model.Asset, error) {
+/*
+	list checked-in tokens info
+*/
+func (bf *BlockFollower) QueryAddrAssets(page, pageSize int32, addr string) ([]*model.Asset, error) {
 	return bf.tokenDao.QueryTokenByAddr(addr, page, pageSize)
 }
 
+/*
+	query one's specific contract token info
+*/
 func (bf *BlockFollower) QueryAddrContractAsset(contract, addr string) (*model.Asset, error) {
 	return bf.tokenDao.QueryTokenByAddrAndContract(addr, contract)
 }
 
+/*
+	list all checked-in tokens
+*/
 func (bf *BlockFollower) QueryAllTokens(page, pageSize int32) ([]*resp.AssetInfo, error) {
 	return bf.tokenDao.QueryAllTokens(page, pageSize)
 }
 
+/*
+	query account's tokens
+*/
 func (bf *BlockFollower) QueryAccountTokens(page, pageSize int32, addr string) ([]*resp.AssetInfo, error) {
 	return bf.tokenDao.QueryTokenByAddrForExplore(page, pageSize, addr)
 }
 
+/*
+	count token total
+*/
 func (bf *BlockFollower) QueryTokenCount() (int64, error) {
 	return bf.tokenDao.QueryCount()
 }
 
+/*
+	search token by content which could be symbol or contract address
+*/
 func (bf *BlockFollower) QuerySearchTokenCount(content string) (uint64, error) {
 	return bf.tokenDao.QueryCountByContent(content)
-}
-
-func (flr *BlockFollower) increaseGasTotal(gas uint64) {
-	total, e := flr.GeTotalGasCost()
-	if e != nil {
-		log4go.Info("flr.GeTotalGasCost error=%v\n", e)
-		return
-	}
-	if total == -1 {
-		total = int64(gas)
-	} else {
-		total = total + int64(gas)
-	}
-
-	e = flr.SetTotalGasCost(uint64(total))
-	if e != nil {
-		log4go.Info("flr.SetTotalGasCost error=%v\n", e)
-	}
-
-}
-
-func (flr *BlockFollower) SetTotalGasCost(gas uint64) error {
-	k1 := gasKey()
-	v1 := make([]byte, 16)
-
-	binary.LittleEndian.PutUint64(v1, gas)
-
-	er := flr.db.Put(k1, v1, nil)
-	if er != nil {
-		return er
-	}
-	return nil
-}
-
-func (flr *BlockFollower) GeTotalGasCost() (int64, error) {
-	vf, er := flr.db.Get(gasKey(), nil)
-	if er != nil {
-		if er == errors.ErrNotFound {
-			return -1, nil
-		}
-		return 0, er
-	}
-
-	p := binary.LittleEndian.Uint64(vf)
-	return int64(p), nil
 }

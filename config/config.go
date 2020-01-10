@@ -9,11 +9,17 @@ var (
 	Cfg *Config
 )
 
+/*
+	Configuration
+*/
 type Config struct {
 	MySQL  MySQL
 	Global Global
 }
 
+/*
+	Load Configuration
+*/
 func LoadConfig(dir string) {
 	Cfg = new(Config)
 	if _, err := toml.DecodeFile(dir+"/config.toml", Cfg); err != nil {
@@ -21,15 +27,21 @@ func LoadConfig(dir string) {
 	}
 }
 
+/*
+	MySQL Configuration
+*/
 type MySQL struct {
-	User string `toml:"user"`
-	Pasw string `toml:"pasw"`
-	Prot string `toml:"prot"`
-	Host string `toml:"host"`
-	Port string `toml:"port"`
-	Dbnm string `toml:"dbnm"`
+	User string `toml:"user"`	//user name
+	Pasw string `toml:"pasw"`	//password
+	Prot string `toml:"prot"`	//protocol
+	Host string `toml:"host"`	//host name or ip
+	Port string `toml:"port"`	//port
+	Dbnm string `toml:"dbnm"`	//database name
 }
 
+/*
+	Global Configuration
+*/
 type Global struct {
 	Port            int32  `toml:"port"`
 	ServerOrigin    string `toml:"server_origin"`
