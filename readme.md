@@ -1,6 +1,6 @@
 项目结构概览：
 
-```bash
+``` go
 ├── config	配置文件
 ├── domain	业务逻辑
 ├── dto	传输数据结构
@@ -13,3 +13,12 @@
 └── router	api路由endpoint
 ```
 
+* build:
+``` bash
+make build
+```
+
+* run:
+``` bash
+./build/bin/LightServer
+```
