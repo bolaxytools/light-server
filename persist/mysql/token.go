@@ -83,7 +83,7 @@ func (dao *TokenDao) QueryTokenByAddr(addr string, page, pageSize int32) ([]*mod
 
 func (dao *TokenDao) QueryTokenByAddrAndContract(addr, contract string) (*model.Asset, error) {
 	sql := "SELECT " +
-		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals from follow f left join token t on f.contract=t.contract where t.contract=? and f.followed=true and f.wallet = ? limit 0,1"
+		"t.symbol,f.balance,t.contract,t.logo,t.desc,t.decimals,t.bap from follow f left join token t on f.contract=t.contract where t.contract=? and f.followed=true and f.wallet = ? limit 0,1"
 	assets := new(model.Asset)
 	er := dao.db.Get(assets, sql, contract, addr)
 	if er != nil {

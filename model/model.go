@@ -35,6 +35,7 @@ type Asset struct {
 	Logo     string `db:"logo" json:"logo"`         //图标地址
 	Desc     string `db:"desc" json:"desc"`         //币名称
 	Decimals uint32 `db:"decimals" json:"decimals"` //精度
+	Bap		 uint32 `db:"bap" json:"bap"`			//前端用于手续费的计算值
 }
 
 type FollowAsset struct {

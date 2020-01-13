@@ -12,7 +12,6 @@ import (
 
 func Getwd() string {
 	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	//dir = "/Users/rudy/gospace/wallet-svc"
 	if err != nil {
 		panic("No caller information")
 	}
