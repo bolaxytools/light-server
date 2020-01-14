@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/alecthomas/log4go"
-	"github.com/boxproject/bolaxy/cmd/sdk"
+	sdk "github.com/bolaxytools/tool-sdk"
 	"math/big"
 	"strconv"
 	"time"

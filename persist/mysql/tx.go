@@ -3,7 +3,7 @@ package mysql
 import (
 	"bytes"
 	"github.com/alecthomas/log4go"
-	"github.com/boxproject/bolaxy/cmd/sdk"
+	sdk "github.com/bolaxytools/tool-sdk"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"wallet-svc/model"

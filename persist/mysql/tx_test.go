@@ -3,7 +3,7 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
-	"github.com/boxproject/bolaxy/cmd/sdk"
+	sdk "github.com/bolaxytools/tool-sdk"
 	"testing"
 	"time"
 	"wallet-svc/model"

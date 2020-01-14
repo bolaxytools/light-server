@@ -53,7 +53,7 @@ func getbalance(c *gin.Context) {
 	}
 
 	coinbox := &resp.AssetBox{
-		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: n.Balance.String(), Logo: "https://cdn.mytoken.org/Frdw6OBZGQhL5WaU2zvJEBgrh3FK", Desc: "BUSD", Decimals: 18,Bap:21000},
+		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: n.Balance.String(), Logo: "https://cdn.mytoken.org/Frdw6OBZGQhL5WaU2zvJEBgrh3FK", Desc: "BUSD", Decimals: 18,Bap:21001},
 		ExtCoinList: asts,
 	}
 

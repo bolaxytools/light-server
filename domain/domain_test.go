@@ -2,7 +2,7 @@ package domain
 
 import (
 	"fmt"
-	"github.com/boxproject/bolaxy/cmd/sdk"
+	sdk "github.com/bolaxytools/tool-sdk"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"testing"
 	"wallet-svc/config"
