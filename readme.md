@@ -13,6 +13,10 @@
 └── router	api路由endpoint
 ```
 
+* First of all,you should copy config.toml.example as config.toml,then give the correct configuration.
+
+
+
 * build:
 ``` bash
 make build
