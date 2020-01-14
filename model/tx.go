@@ -12,7 +12,7 @@ type Tx struct {
 	Memo        string `db:"memo" json:"memo"`                 //备注
 	Contract    string `db:"contract" json:"contract"`         //合约地址（如果有）
 	Status      int8   `db:"status" json:"status"`             //交易状态
-	Symbol      string `db:"symbol" json:"symbol"`             //币种简称
+	Symbol      string `db:"symbol" json:"symbol"`             //token种简称
 }
 
 type Block struct {

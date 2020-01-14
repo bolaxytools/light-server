@@ -53,7 +53,7 @@ func getbalance(c *gin.Context) {
 	}
 
 	coinbox := &resp.AssetBox{
-		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: n.Balance.String(), Logo: "https://cdn.mytoken.org/Frdw6OBZGQhL5WaU2zvJEBgrh3FK", Desc: "BUSD", Decimals: 18},
+		MainCoin:    &model.Asset{Symbol: "BUSD", Balance: n.Balance.String(), Logo: "https://cdn.mytoken.org/Frdw6OBZGQhL5WaU2zvJEBgrh3FK", Desc: "BUSD", Decimals: 18,Bap:21000},
 		ExtCoinList: asts,
 	}
 
@@ -61,7 +61,7 @@ func getbalance(c *gin.Context) {
 }
 
 /*
-	获取子币余额
+	获取子token余额
 */
 func getTokenInfo(c *gin.Context) {
 	reqdata := new(req.ReqData)
@@ -133,7 +133,7 @@ func getNonce(c *gin.Context) {
 }
 
 /*
-	关注币种
+	关注token种
 */
 func followToken(c *gin.Context) {
 	reqdata := new(req.ReqData)
@@ -161,7 +161,7 @@ func followToken(c *gin.Context) {
 }
 
 /*
-	搜索币种
+	搜索token种
 */
 func searchToken(c *gin.Context) {
 	reqdata := new(req.ReqData)

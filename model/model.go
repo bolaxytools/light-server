@@ -19,6 +19,7 @@ type Token struct {
 	Quantity uint64 `db:"quantity" json:"quantity"`
 	Followed bool   `db:"followed" json:"followed"`
 	Decimals int32  `db:"decimals" json:"decimals"`
+	Bap		 uint32 `db:"bap" json:"bap"`			//前端用于手续费的计算值
 }
 
 type Follow struct {
@@ -29,11 +30,11 @@ type Follow struct {
 }
 
 type Asset struct {
-	Symbol   string `db:"symbol" json:"symbol"`     //币简称
+	Symbol   string `db:"symbol" json:"symbol"`     //token简称
 	Balance  string `db:"balance" json:"balance"`   //余额
 	Contract string `db:"contract" json:"contract"` //合约地址
 	Logo     string `db:"logo" json:"logo"`         //图标地址
-	Desc     string `db:"desc" json:"desc"`         //币名称
+	Desc     string `db:"desc" json:"desc"`         //token名称
 	Decimals uint32 `db:"decimals" json:"decimals"` //精度
 	Bap		 uint32 `db:"bap" json:"bap"`			//前端用于手续费的计算值
 }
