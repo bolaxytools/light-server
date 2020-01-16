@@ -8,6 +8,7 @@ import (
 	sdk "github.com/bolaxytools/tool-sdk"
 	"math/big"
 	"strconv"
+	"strings"
 	"time"
 	"wallet-svc/model"
 	"wallet-svc/util"
@@ -68,7 +69,7 @@ func (flr *BlockFollower) GetBlockTxs(hei int64) (*model.Block, map[string]strin
 
 	blk := &model.Block{
 		Height:    pmt.Body.Index,
-		Hash:      pmt.Body.StateHash,
+		Hash:      strings.ToLower(pmt.Body.StateHash),
 		TxCount:   int32(len(txs)),
 		BlockTime: time.Now().UnixNano() / 1e6,
 	}
@@ -253,11 +254,11 @@ func (flr *BlockFollower) remakeTx(tx *sdk.Transaction, height uint64, txTime in
 	}
 	mtx := &model.Tx{
 		TxType:      0,
-		AddrFrom:    tx.From,
-		AddrTo:      tx.To,
+		AddrFrom:    strings.ToLower(tx.From),
+		AddrTo:      strings.ToLower(tx.To),
 		Amount:      tx.Value,
 		MinerFee:    fmt.Sprintf("%d", tx.Gas),
-		TxHash:      tx.Hash,
+		TxHash:      strings.ToLower(tx.Hash),
 		BlockHeight: height,
 		TxTime:      txTime,
 		Memo:        datastr,
@@ -283,15 +284,15 @@ func (flr *BlockFollower) remakeTx(tx *sdk.Transaction, height uint64, txTime in
 		mtx.Amount = util.DataToValue(tmp.Data.Logs[0].Data)
 
 		fa_fr := &model.FollowAsset{
-			Contract: mtx.Contract,
-			Address:  mtx.AddrFrom,
+			Contract: strings.ToLower(mtx.Contract),
+			Address:  strings.ToLower(mtx.AddrFrom),
 		}
 
 		flr.chan_fa <- fa_fr
 
 		fa_to := &model.FollowAsset{
-			Contract: mtx.Contract,
-			Address:  mtx.AddrTo,
+			Contract: strings.ToLower(mtx.Contract),
+			Address:  strings.ToLower(mtx.AddrTo),
 		}
 		flr.chan_fa <- fa_to
 

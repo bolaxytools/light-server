@@ -20,7 +20,9 @@ func NewFollowDao() *FollowDao {
 func (dao *FollowDao) Add(gd *model.Follow) error {
 	sql := "INSERT INTO `follow`(`contract`, `wallet`, `balance`,`followed`) " +
 		"VALUES " +
-		"(:contract, :wallet, :balance,:followed) ON DUPLICATE KEY UPDATE `balance`=:balance"
+		"(:contract, :wallet, :balance,:followed) ON DUPLICATE KEY UPDATE `balance`=:balance,`followed`=:followed"
+
+	log4go.Info("FollowDao.Add.sql=%s,contract=%s,wallet=%s,followed=%t",sql,gd.Contract,gd.Wallet,gd.Followed)
 	re, err := dao.db.NamedExec(sql, gd)
 
 	if err != nil {
@@ -32,6 +34,25 @@ func (dao *FollowDao) Add(gd *model.Follow) error {
 		return er
 	}
 	log4go.Debug("INSERT INTO `follow` result=%d\n", lid)
+
+	return nil
+}
+
+func (dao *FollowDao) Update(gd *model.Follow) error {
+	sql := "update `follow` set  `balance`=:balance where `contract`=:contract and `wallet`=:wallet"
+
+	log4go.Info("FollowDao.Add.sql=%s,contract=%s,wallet=%s,followed=%t",sql,gd.Contract,gd.Wallet,gd.Followed)
+	re, err := dao.db.NamedExec(sql, gd)
+
+	if err != nil {
+		return err
+	}
+
+	lid, er := re.RowsAffected()
+	if er != nil {
+		return er
+	}
+	log4go.Debug("INSERT INTO `follow` RowsAffected=%d\n", lid)
 
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/alecthomas/log4go"
 	"github.com/gin-gonic/gin"
+	"strings"
 	"wallet-svc/domain"
 	"wallet-svc/dto/req"
 	"wallet-svc/dto/resp"
@@ -183,7 +184,9 @@ func searchToken(c *gin.Context) {
 
 	flr := domain.NewBlockFollower()
 
-	tkns, r := flr.SearchToken(inner.Content, inner.Addr)
+
+
+	tkns, r := flr.SearchToken(inner.Content, strings.ToLower(inner.Addr))
 	if r != nil {
 		c.JSON(http.StatusOK, resp.BindJsonErrorResp(r.Error()))
 		return

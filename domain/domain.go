@@ -7,6 +7,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"strings"
 	"time"
 	"wallet-svc/config"
 	"wallet-svc/dto/resp"
@@ -53,8 +54,8 @@ func (bf *BlockFollower) procTxs() {
 		select {
 		case txs := <-bf.chan_txs:
 			for _, tx := range txs {
-				from := tx.From
-				to := tx.To
+				from := strings.ToLower(tx.From)
+				to := strings.ToLower(tx.To)
 				now := time.Now().UnixNano() / 1e6
 				if len(from) > 0 {
 					fa := &model.Address{
@@ -99,13 +100,16 @@ func (bf *BlockFollower) procFollowAssetBalance() {
 				continue
 			}
 
+			ctrct := strings.ToLower(fa.Contract)
+			wllt := strings.ToLower(fa.Address)
+
 			flw := &model.Follow{
-				Contract: fa.Contract,
-				Wallet:   fa.Address,
+				Contract: ctrct,
+				Wallet:   wllt,
 				Balance:  balance,
 			}
 
-			err := bf.followDao.Add(flw)
+			err := bf.followDao.Update(flw)
 			if err != nil {
 				log4go.Info("bf.followDao.Add error=%v\n", err)
 			}
@@ -146,7 +150,7 @@ func NewLDBDatabase() (*leveldb.DB, error) {
 }
 
 /*
-instantiate Block Follower
+	instantiate Block Follower
 */
 func NewBlockFollower() *BlockFollower {
 
@@ -228,10 +232,6 @@ func (flr *BlockFollower) pa(lh, ch int64) bool {
 
 		nowmills := time.Now().UnixNano() / 1e6
 
-		if lh == 4 || lh == 5 {
-			log4go.Info("a")
-		}
-
 		/******begin******/
 		mdxs, er := flr.translate(txs, uint64(next), nowmills)
 		if er != nil {
@@ -281,16 +281,20 @@ func (flr *BlockFollower) checkExists(fooAddr string) bool {
 	follow a token,add it to wallet
 */
 func (bf *BlockFollower) FollowToken(contract, addr, balance string) error {
+
+	ctrct := strings.ToLower(contract)
+	wllt := strings.ToLower(addr)
+
 	flw := &model.Follow{
-		Contract: contract,
-		Wallet:   addr,
+		Contract: ctrct,
+		Wallet:   wllt,
 		Balance:  balance,
 		Followed: true,
 	}
 
 	fa := &model.FollowAsset{
-		Contract: contract,
-		Address:  addr,
+		Contract: ctrct,
+		Address:  wllt,
 	}
 
 	bf.chan_fa <- fa
